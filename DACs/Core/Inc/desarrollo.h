@@ -3,6 +3,7 @@
 //*** Librerías *****************
 
 #include <stdint.h>
+#include "uHALdac.h"
 #include "main.h"
 
 //*** Macros *****************
@@ -11,8 +12,8 @@
 
 //*** Declaracion de funciones *****************
 
-void GenerarTriangular ( uint32_t * Senial, uint16_t Muestras);
-
+void GenerarTriangular2 ( uint32_t * Senial, uint16_t Muestras);
+void ImprimirDatos( dac_id_t );
 
 
 

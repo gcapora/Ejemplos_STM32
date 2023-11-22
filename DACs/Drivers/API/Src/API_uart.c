@@ -58,7 +58,7 @@ bool_t uartInit() {
       - BaudRate    = 9600 baud
       - Hardware flow control disabled (RTS and CTS signals) */
   UartHandle.Instance          = USARTx;
-  UartHandle.Init.BaudRate     = 9600;
+  UartHandle.Init.BaudRate     = 115200;
   UartHandle.Init.WordLength   = UART_WORDLENGTH_8B;
   UartHandle.Init.StopBits     = UART_STOPBITS_1;
   UartHandle.Init.Parity       = UART_PARITY_NONE;
@@ -68,7 +68,7 @@ bool_t uartInit() {
   /*##########################################################################*/
   if (HAL_UART_Init(&UartHandle) == HAL_OK) {
 	  char Cadena[32];
-	  uartSendString((uint8_t *) "CONEXION UART ESTABLECIDA:\n");
+	  uartSendString((uint8_t *) "\n\nCONEXION UART ESTABLECIDA:\n");
 
 	  uartSendString((uint8_t *) "Baudios = ");
 	  sprintf(Cadena, "%ld", UartHandle.Init.BaudRate);
@@ -79,7 +79,6 @@ bool_t uartInit() {
 	  uartSendString((uint8_t *) "Largo de palabra = 8\n\r");
 	  uartSendString((uint8_t *) "Bits de parada = 1\n\r");
 	  uartSendString((uint8_t *) "Paridad = Ninguna\n\r");
-
 	  // Esto se podría hacer mejor, pero implicaría traducir cada constante.
 
   }
