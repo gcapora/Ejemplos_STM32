@@ -33,13 +33,14 @@ void   uHALdacdmaSincronizar ( void );
 Primero se debe inicializar el DAC con uHALdacdmaInicializar(). Luego ya se puede utilizar uHALdacdmaComenzar(), utilizando una frecuencia de muestreo predeterminada. La frecuencia de muestreo se puede cambiar __al vuelo__ utilizando uHALdacdmaConfigurarFrecuenciaMuestreo() directamente.
 
 ![Diagrama de estados de las funciones DACs](https://github.com/gcapora/Ejemplos_STM32/blob/main/DACs/Docs/Estados%20DACs.drawio.png)
+*Figura 1: Estados y transiciones posibles con las funciones de uHALdac.h*
 
-## El problema
+En la __Figura 1__ se muestran los estados de cada DAC y las transiciones permitidas con las funciones de la librería.
+
+## Problemas de implementación
 Con este módulo logramos controlar los dos canales del DAC enviando señales independientes con frecuencias de muestreo independientes. Se ha utilizado 5 Msps para cada canal de modo de tener un margen grande hasta el máximo de 10,2 Msps que establece la hoja de datos para un único canal en funcionamiento. 
 
-El problema está cuando se desea que ambas señales tengan la misma frecuencia de muestreo y tengan un defasaje conocido. Se ha probado y logrado que posean siempre la misma fase si activamos ambos canales con DMA disparados con el mismo temporizador. Pero eso no permite tener frecuencias diferentes. 
-
-Se ha intentado sin éxito buscar la forma de resetear el índice del DMA para que ambos canales vuelvan a comenzar en el primer valor de la cadena. Si se logra esto, no sería necesario utilizar el DMA con carga simultánea en ambos canales (cuestion que por otra parte no encuentro alguna función HAL asociada).
+El problema está cuando se desea que ambas señales tengan la misma frecuencia de muestreo y tengan un defasaje conocido. Se utiliza la función uHALdacdmaSincronizar() para que ambas señales comiencen en el mismo momento, con un error de 50 ns. Este tiempo fue medido con osciloscopio y tiene que ver con el hecho de que utilizamos dos temporizadores diferentes para ambas señales. A 100 kHz esto representa un error de 1,8º.
 
 ## Referencias
 Algunos enlaces que se estuvieron revisando:
