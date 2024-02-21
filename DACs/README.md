@@ -32,8 +32,11 @@ void   uHALdacdmaSincronizar ( void );
 
 Primero se debe inicializar el DAC con uHALdacdmaInicializar(). Luego ya se puede utilizar uHALdacdmaComenzar(), utilizando una frecuencia de muestreo predeterminada. La frecuencia de muestreo se puede cambiar __al vuelo__ utilizando uHALdacdmaConfigurarFrecuenciaMuestreo() directamente.
 
+<center>
 ![Diagrama de estados de las funciones DACs](https://github.com/gcapora/Ejemplos_STM32/blob/main/DACs/Docs/Estados%20DACs.drawio.png)
+
 *Figura 1: Estados y transiciones posibles con las funciones de uHALdac.h*
+</center>
 
 En la __Figura 1__ se muestran los estados de cada DAC y las transiciones permitidas con las funciones de la librería.
 
