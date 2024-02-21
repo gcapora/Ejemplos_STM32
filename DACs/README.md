@@ -32,6 +32,8 @@ void   uHALdacdmaSincronizar ( void );
 
 Primero se debe inicializar el DAC con uHALdacdmaInicializar(). Luego ya se puede utilizar uHALdacdmaComenzar(), utilizando una frecuencia de muestreo predeterminada. La frecuencia de muestreo se puede cambiar __al vuelo__ utilizando uHALdacdmaConfigurarFrecuenciaMuestreo() directamente.
 
+![Diagrama de estados de las funciones DACs](https://github.com/gcapora/Ejemplos_STM32/blob/main/DACs/Docs/Estados%20DACs.drawio.png)
+
 ## El problema
 Con este módulo logramos controlar los dos canales del DAC enviando señales independientes con frecuencias de muestreo independientes. Se ha utilizado 5 Msps para cada canal de modo de tener un margen grande hasta el máximo de 10,2 Msps que establece la hoja de datos para un único canal en funcionamiento. 
 
