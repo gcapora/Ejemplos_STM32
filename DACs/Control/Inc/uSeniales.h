@@ -33,9 +33,6 @@ typedef struct {
 
 /****** Declaraciones de datos externos **********************************************************/
 
-extern uint32_t MAXIMO_DAC[];       // Valores máximos recomendables para DAC's (<=4095)
-extern uint32_t MINIMO_DAC[];       // Valores mínimos recomendables para DAC's (>=0)
-extern double TRANSFERENCIA_DAC[];  // Voltios / cuenta (aprox. 805,9 uV/cuenta)
 
 /****** Declaración de funciones públicas ********************************************************/
 

@@ -41,6 +41,9 @@ typedef struct {
 
 /****** Definición de datos públicos *************************************************************/
 
+uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS]        = { 3950, 4010 };
+uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = { 50, 100 };
+double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS] = { 805.861e-6, 805.861e-6 };
 
 /****** Definición de datos privados *************************************************************/
 
@@ -54,7 +57,9 @@ const uint32_t TEMPO_DAC [UHAL_CANTIDAD_DACS]   = { (uint32_t) TIM4,     (uint32
 
 // Variables para manejo de funciones HAL de STM
 static DAC_HandleTypeDef hdac;
-static TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];
+//static TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];
+TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];
+
 //extern DMA_HandleTypeDef hdma_dac2;	// Variable definida por IDE en main.c para manejo de DMA
 //extern DMA_HandleTypeDef hdma_dac1;	// Variable definida por IDE en main.c para manejo de DMA
 
@@ -64,8 +69,10 @@ static dac_config_privada_s DAC_CONFIG [UHAL_CANTIDAD_DACS]  = {0};
 
 /****** Declaración de funciones privadas ********************************************************/
 
-static void   U_TIM_Inicializar ( dac_id_t );
-static void   U_DMA_Inicializar ( dac_id_t );
+static void   U_TIM_Inicializar  ( dac_id_t );
+static bool   U_TIM_DetenerTodos (void);
+static bool   U_TIM_IniciarTodos (void);
+static void   U_DMA_Inicializar  ( dac_id_t );
 static double U_CalculaFrecuencia_TIM ( uint32_t PERIODO );
 
 /****** Definición de funciones públicas *********************************************************/
@@ -220,22 +227,43 @@ void uHALdacdmaReanudar ( dac_id_t NUM_DAC)
 }
 
 /*-------------------------------------------------------------------------------------------------
-  * @brief Reanuda señal
+  * @brief Sincroniza ambas señales, si tienen igual frecuencia de muestreo y cantidad de muestras.
   * @param None
   * @retval None
   */
 void   uHALdacdmaSincronizar ( void )
 {
-	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
-	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
-	//uHALdacdmaParar ( UHAL_DAC_1 );
-	//uHALdacdmaParar ( UHAL_DAC_2 );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , 0 );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , 0 );
-	//uHALdacdmaReanudar ( UHAL_DAC_1 );
-	//uHALdacdmaReanudar ( UHAL_DAC_2 );
-	HAL_TIM_Base_Start( &htim[ UHAL_DAC_1 ] );
-	HAL_TIM_Base_Start( &htim[ UHAL_DAC_2 ] );
+	// TODO: verificar que ambas señales tengan misma frecuencia de muestreo y muestras
+
+	// 1) Paramos ambas señales y los temporizadores:
+    uHALdacdmaParar ( UHAL_DAC_1 );
+    uHALdacdmaParar ( UHAL_DAC_2 );
+    U_TIM_DetenerTodos ();
+
+    // 2) Las reanudamos con sólo 1 (una) muestra para resetear contador DMA:
+	//    Dejamos los tempos parados.
+	//    Volvemoa a parar para reanudar con señal original.
+
+    /*
+	HAL_DAC_Start_DMA( &hdac,
+			           CANAL_DAC[UHAL_DAC_1],
+					   DAC_CONFIG[UHAL_DAC_1].P_Senial,
+					   1,
+					   DAC_ALIGN_12B_R);
+	HAL_DAC_Stop_DMA ( &hdac, CANAL_DAC[UHAL_DAC_1] );
+
+	HAL_DAC_Start_DMA( &hdac,
+			           CANAL_DAC[UHAL_DAC_2],
+					   DAC_CONFIG[UHAL_DAC_2].P_Senial,
+					   1,
+					   DAC_ALIGN_12B_R);
+	HAL_DAC_Stop_DMA ( &hdac, CANAL_DAC[UHAL_DAC_2] );
+    */
+
+	// 4) Reanudamos...
+	uHALdacdmaReanudar ( UHAL_DAC_1 );
+	uHALdacdmaReanudar ( UHAL_DAC_2 );
+	U_TIM_IniciarTodos ();
 }
 
 
@@ -282,6 +310,52 @@ static void U_TIM_Inicializar( dac_id_t NUM_DAC )
     HAL_TIM_Base_Start( &htim[NUM_DAC] );
   }
   return;
+}
+
+/*-------------------------------------------------------------------------------------------------
+  * @brief  Detiene ambos temporizadores del DMA
+  * @param
+  * @retval true si la operacion fue exitosa
+  */
+static bool U_TIM_DetenerTodos   (void)
+{
+    HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
+	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_2 ] );
+	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , 0 );
+	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , 1 );
+	return true;
+}
+
+/*-------------------------------------------------------------------------------------------------
+  * @brief  Re-iniciamos los tempos de DMA
+  * @param
+  * @retval true si la operación fue exitosa.
+  */
+static bool   U_TIM_IniciarTodos (void)
+{
+   //uint32_t tmpsmcr;
+
+   /* Check the parameters */
+   assert_param(IS_TIM_INSTANCE(htim[ UHAL_DAC_1 ]->Instance));
+   assert_param(IS_TIM_INSTANCE(htim[ UHAL_DAC_2 ]->Instance));
+
+   /* Check the TIM state */
+   if (htim[ UHAL_DAC_1 ].State != HAL_TIM_STATE_READY) return false;
+   if (htim[ UHAL_DAC_2 ].State != HAL_TIM_STATE_READY) return false;
+
+   /* Set the TIM state */
+   htim[ UHAL_DAC_1 ].State = HAL_TIM_STATE_BUSY;
+   htim[ UHAL_DAC_2 ].State = HAL_TIM_STATE_BUSY;
+
+   /* Enable the Peripheral
+    * Atención: en la función HAL original revisa si un temporizador está en modo esclavo para ser activado por otro tempo */
+     __HAL_TIM_ENABLE( &htim[ UHAL_DAC_1 ]);
+     __HAL_TIM_ENABLE( &htim[ UHAL_DAC_2 ]);
+
+	//HAL_TIM_Base_Start( &htim[ UHAL_DAC_1 ] );
+	//HAL_TIM_Base_Start( &htim[ UHAL_DAC_2 ] );
+
+    return true;
 }
 
 /*-------------------------------------------------------------------------------------------------

@@ -63,6 +63,7 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 uint32_t SenialDAC1[MAX_N_MUESTRAS] = {0};
 uint32_t SenialDAC2[MAX_N_MUESTRAS] = {0};
+uint32_t Valor_0V [UHAL_DAC_TODOS]  = {2000, 2055};
 
 /* USER CODE END PV */
 
@@ -131,15 +132,15 @@ int main(void)
   ConfigDeseada.Minimo = MINIMO_DAC[UHAL_DAC_1];
   ConfigDeseada.Ciclo = 0.5;
   uGenerarSenoidal ( SenialDAC1, MUESTRAS1, &ConfigDeseada );
-  for (uint16_t j=0; j<MUESTRAS1; j++)
+  /*for (uint16_t j=0; j<MUESTRAS1; j++)
   {
 	  SenialDAC1[j] = SenialDAC1[j] << 16U | SenialDAC1[j];
-  }
+  }*/
 
   ConfigDeseada.Maximo = MAXIMO_DAC[UHAL_DAC_2];
   ConfigDeseada.Minimo = MINIMO_DAC[UHAL_DAC_2];
   ConfigDeseada.Ciclo = 0.5;
-  ConfigDeseada.Fase = 110;
+  ConfigDeseada.Fase = 180; //7.2;
   uGenerarSenoidal ( SenialDAC2, MUESTRAS2, &ConfigDeseada );
 
   /*char Cadena[32];
@@ -171,31 +172,53 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_Delay(4000);
-	uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 1*MHZ );
-	ImprimirDatos( UHAL_DAC_1 );
-	uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 1*MHZ );
-	ImprimirDatos( UHAL_DAC_2 );
-	//uHALdacdmaSincronizar ();
-	uartSendString((uint8_t *) "-----------------------------------\n\r");
 
-	HAL_Delay(4000);
 	//uHALdacdmaReanudar ( UHAL_DAC_1 );
 	//uartSendString((uint8_t *) "Reanudamos DAC N1\n\r");
 	uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 5*MHZ );
 	ImprimirDatos( UHAL_DAC_1 );
     uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 5*MHZ );
 	ImprimirDatos( UHAL_DAC_2 );
-	//uHALdacdmaSincronizar ();
+	uHALdacdmaSincronizar ();
     uartSendString((uint8_t *) "-----------------------------------\n\r");
-
     HAL_Delay(4000);
+
     uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 200*KHZ );
     ImprimirDatos( UHAL_DAC_1 );
     uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 200*KHZ );
     ImprimirDatos( UHAL_DAC_2 );
+    uHALdacdmaSincronizar ();
+    uartSendString((uint8_t *) "-----------------------------------\n\r");
+    HAL_Delay(4000);
+
+    // Valor mecio en salida 1
+    uartSendString((uint8_t *) "\n\r/// Valor 0 V /// -----------------\n\r");
+    uHALdacdmaParar ( UHAL_DAC_1 );
+    uHALdacdmaComenzar ( UHAL_DAC_1, &Valor_0V[UHAL_DAC_1], 1 );
+    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 200*KHZ );
+    ImprimirDatos( UHAL_DAC_1 );
+
+    uHALdacdmaParar ( UHAL_DAC_2 );
+    uHALdacdmaComenzar ( UHAL_DAC_2, &Valor_0V[UHAL_DAC_2], 1 );
+    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 200*KHZ );
+    //ImprimirDatos( UHAL_DAC_2 );
     //uHALdacdmaSincronizar ();
     uartSendString((uint8_t *) "-----------------------------------\n\r");
+	HAL_Delay(4000);
+
+    uHALdacdmaParar ( UHAL_DAC_1 );
+    uHALdacdmaParar ( UHAL_DAC_2 );
+    /*HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
+	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
+	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , 0 );
+	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , 0 ); */
+    uHALdacdmaComenzar ( UHAL_DAC_1, SenialDAC1, MUESTRAS1 );
+	uHALdacdmaComenzar ( UHAL_DAC_2, SenialDAC2, MUESTRAS2 );
+	uHALdacdmaSincronizar ();
+    ImprimirDatos( UHAL_DAC_1 );
+    ImprimirDatos( UHAL_DAC_2 );
+    uartSendString((uint8_t *) "-----------------------------------\n\r");
+	HAL_Delay(4000);
 
   }
   /* USER CODE END 3 */

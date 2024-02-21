@@ -22,9 +22,6 @@
 
 /****** Definición de datos públicos *************************************************************/
 
-uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS]        = { 3950, 4010 };
-uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = { 50, 100 };
-double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS] = { 805.861e-6, 805.861e-6 };
 
 /****** Declaración de funciones privadas ********************************************************/
 
