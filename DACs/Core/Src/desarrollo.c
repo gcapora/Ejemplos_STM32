@@ -37,24 +37,26 @@ void ImprimirDatos( dac_id_t NUM_DAC )
 	uint16_t Muestras = 0;
 
 	if ( NUM_DAC == UHAL_DAC_1 ) {
-			uartSendString((uint8_t *) "\n\rDAC N1:\n\r");
+			uartSendString((uint8_t *) "DAC Numero 1:\n\r");
 			Muestras = MUESTRAS1;
 	} else {
-			uartSendString((uint8_t *) "\n\rDAC N2:\n\r");
+			uartSendString((uint8_t *) "DAC Numero 2:\n\r");
 			Muestras = MUESTRAS2;
 	}
 
 	uint32_t FM = (uint32_t) uHALdacdmaLeerFrecuenciaMuestreo ( NUM_DAC );
-	sprintf(Cadena, "%lu", FM);
+	sprintf(Cadena, "%lu", (uint32_t) FM/1000);
 	// sprintf(Cadena, "%lu", sizeof(double));
 	uartSendString((uint8_t *) "Frecuencia de muestreo = ");
 	uartSendString((uint8_t *) Cadena);
-	uartSendString((uint8_t *) " Hz\n\r");
+	uartSendString((uint8_t *) " kHz\n\r");
 
 	float FS = round((float) FM / (float) Muestras);
 	sprintf(Cadena, "%lu", (uint32_t) FS);
 	uartSendString((uint8_t *) "Frecuencia de senial = ");
 	uartSendString((uint8_t *) Cadena);
 	uartSendString((uint8_t *) " Hz\n\r");
+
+	//uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
 
 }

@@ -67,7 +67,7 @@ bool_t uartInit() {
   UartHandle.Init.OverSampling = UART_OVERSAMPLING_16;
   /*##########################################################################*/
   if (HAL_UART_Init(&UartHandle) == HAL_OK) {
-	  char Cadena[32];
+	  /*char Cadena[32];
 	  uartSendString((uint8_t *) "\n\nCONEXION UART ESTABLECIDA:\n");
 
 	  uartSendString((uint8_t *) "Baudios = ");
@@ -80,7 +80,7 @@ bool_t uartInit() {
 	  uartSendString((uint8_t *) "Bits de parada = 1\n\r");
 	  uartSendString((uint8_t *) "Paridad = Ninguna\n\r");
 	  // Esto se podría hacer mejor, pero implicaría traducir cada constante.
-
+      */
   }
 
   return (HAL_UART_Init(&UartHandle) == HAL_OK);

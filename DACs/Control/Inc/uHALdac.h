@@ -19,8 +19,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-//#include "stm32f4xx_hal.h"
-//#include "stm32f4xx_hal_dac.h"
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
@@ -39,24 +37,26 @@ typedef enum {
 	UHAL_DAC_TODOS
 } dac_id_t;
 
-/****** Declaraciones de datos públicos **********************************************************/
+/****** Declaración de datos públicos ************************************************************/
 
-// extern DMA_HandleTypeDef hdma_dac2;
-// extern DMA_HandleTypeDef hdma_dac1;
-// extern TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];// para intento de soncronización
-extern uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS];        // Valores máximos recomendables para DAC's (<=4095)
-extern uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS];        // Valores mínimos recomendables para DAC's (>=0)
-extern double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS]; // Voltios / cuenta (aprox. 805,9 uV/cuenta)
+extern const uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS];        // Valores máximos recomendables para DAC's (<=4095)
+extern const uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS];        // Valores mínimos recomendables para DAC's (>=0)
+extern const double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS]; // Voltios / cuenta (aprox. 805,9 uV/cuenta)
 
 /****** Declaración de funciones públicas ********************************************************/
 
-void   uHALdacdmaInicializar ( dac_id_t );
-double uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t );
-double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t, double );
-void   uHALdacdmaComenzar ( dac_id_t, uint32_t *, uint32_t );
-void   uHALdacdmaParar ( dac_id_t );
-void   uHALdacdmaReanudar ( dac_id_t );
-void   uHALdacdmaSincronizar ( void );
+bool     uHALdacdmaInicializar ( dac_id_t );
+double   uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t );
+double   uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t, double );
+double   uHALdacdmaFrecuenciaBase (void);
+double   uHALdacdmaFrecuenciaMaxima (void);
+double   uHALdacdmaFrecuenciaMinima (void);
+uint32_t uHALdacdmaDivisorConfigurado (dac_id_t);
+bool     uHALdacdmaComenzar ( dac_id_t, uint32_t *, uint32_t );
+bool     uHALdacdmaParar ( dac_id_t );
+bool     uHALdacdmaReanudar ( dac_id_t );
+bool     uHALdacdmaSincronizar ( void );
+
 
 /*************************************************************************************************/
 #endif /* __ISPEL_UHALDAC_H */

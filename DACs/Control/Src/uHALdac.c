@@ -17,10 +17,17 @@
 
 #define CUENTA_MAX_16B		65535
 #define CUENTA_MAX_8B		255
-#define U_TIM_DIVISOR		TIM_CLOCKDIVISION_DIV1  // Divisor del reloj: no modifica los 90 MHz
-                                                    // La fuente de reloj interna tiene 180 MHz/2
-#define U_TIM_PREESCALADO	8  // Pre-escalado que no modificaremos: 90/(8+1) = 10 MHz
-#define U_TIM_PERIODO_INI	1  // Período inicial que variaremos: 10/(1+1) = 5 MHz
+
+#define U_TIM_DIVISOR		TIM_CLOCKDIVISION_DIV1   // Divisor del reloj.
+                                // La fuente de reloj interna queda en 180 MHz/2 = 90 MHz.
+#define U_TIM_PREESCALADO	8   // Pre-escalado que no modificaremos: 90 MHz / (8+1) = 10 MHz.
+#define U_TIM_PERIODO_INI	1   // Período inicial que variaremos: 10 MHz / (1+1) = 5 MHz.
+#define U_TIM_PERIODO_MIN   1   // Valor mínimo que puede tomar el período del tempo.
+
+#define U_FRECUENCIA_BASE   ((double) FRECUENCIA_RELOJ) / 2 / (U_TIM_PREESCALADO+1)
+                                // Frecuencia común para todas las señales.
+                                // No es la máxima, dado que en este caso se divide al menos por 2.
+                                // Resulta ser 180 MHz / 2 / (8+1) = 10 MHz
 #define DAC_FRECUENCIA_MUESTREO_MINIMA   (FRECUENCIA_RELOJ / 2 / (U_TIM_PREESCALADO+1) / 65536)
 
 /****** Definiciones privadas de tipos (private typedef) *****************************************/
@@ -28,22 +35,30 @@
 typedef enum {
 	DAC_NO_INICIALIZADO,
 	DAC_INICIALIZADO_DMA
-} dac_inicializado;
+} dac_inicializado;			// Para registrar inicialización del módulo.
+
+typedef enum {
+	NO_INICIALIZADO,
+	INICIALIZADO,
+	ACTIVO,
+	PARADO
+} dac_estado;				// Para registrar estado de cada canal del DAC.
 
 typedef struct {
-	double Frecuencia_Deseada;
-	double Frecuencia_Configurada;
-	uint32_t Prescalado;
-	uint32_t Periodo;
-	uint32_t * P_Senial;
-	uint32_t Muestras;
+	double     Frecuencia_Deseada;
+	double     Frecuencia_Configurada;
+	uint32_t   Prescalado;
+	uint32_t   Periodo;
+	uint32_t   * P_Senial;
+	uint32_t   Muestras;
+	dac_estado Estado;
 } dac_config_privada_s;
 
 /****** Definición de datos públicos *************************************************************/
 
-uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS]        = { 3950, 4010 };
-uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = { 50, 100 };
-double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS] = { 805.861e-6, 805.861e-6 };
+const uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS]        = { 3950, 4010 };
+const uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = { 50, 100 };
+const double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS] = { 805.861e-6, 805.861e-6 };
 
 /****** Definición de datos privados *************************************************************/
 
@@ -52,16 +67,9 @@ const uint32_t CANAL_DAC      [UHAL_CANTIDAD_DACS] = { DAC_CHANNEL_1,       DAC_
 const uint32_t DISPARO_DAC    [UHAL_CANTIDAD_DACS] = { DAC_TRIGGER_T4_TRGO, DAC_TRIGGER_T2_TRGO };
 const TIM_TypeDef * TEMPO_DAC [UHAL_CANTIDAD_DACS] = { TIM4,                TIM2 };
 
-/*const uint32_t DISPARO_DAC [UHAL_CANTIDAD_DACS] = { DAC_TRIGGER_T4_TRGO, DAC_TRIGGER_T2_TRGO };
-const uint32_t TEMPO_DAC [UHAL_CANTIDAD_DACS]   = { (uint32_t) TIM4,     (uint32_t) TIM2     };*/
-
 // Variables para manejo de funciones HAL de STM
 static DAC_HandleTypeDef hdac;
-//static TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];
 TIM_HandleTypeDef htim [UHAL_CANTIDAD_DACS];
-
-//extern DMA_HandleTypeDef hdma_dac2;	// Variable definida por IDE en main.c para manejo de DMA
-//extern DMA_HandleTypeDef hdma_dac1;	// Variable definida por IDE en main.c para manejo de DMA
 
 // Variables para administración de DACs
 static dac_inicializado     Inicializacion_DACS = DAC_NO_INICIALIZADO;
@@ -82,8 +90,10 @@ static double U_CalculaFrecuencia_TIM ( uint32_t PERIODO );
  * @param
  * @retval Frecuencia de muestreo
  */
-void uHALdacdmaInicializar ( dac_id_t NUM_DAC )
+bool uHALdacdmaInicializar ( dac_id_t NUM_DAC )
 {
+  bool RETORNO = false;
+
   // Verificamos inicialización general -------------------------------------------------
   if (DAC_NO_INICIALIZADO == Inicializacion_DACS)
   {
@@ -105,30 +115,42 @@ void uHALdacdmaInicializar ( dac_id_t NUM_DAC )
 
   // Verifico inicialización específica -------------------------------------------------
   if ( UHAL_DAC_TODOS == NUM_DAC ) {
-	// Inicializo todos los DACs
-	uHALdacdmaInicializar (UHAL_DAC_1);
-	uHALdacdmaInicializar (UHAL_DAC_2);
+	// Inicializo todos los DACs (que queden sin inicializar)
+	if ( uHALdacdmaInicializar (UHAL_DAC_1) ) RETORNO = true;
+	if ( uHALdacdmaInicializar (UHAL_DAC_2) ) RETORNO = true;
 
   } else {
-	// Inicialización específica de DISPARO de DAC1 o DAC2 --------------------
-	DAC_ChannelConfTypeDef sConfig = {0};
-	sConfig.DAC_Trigger      = DISPARO_DAC [NUM_DAC];
-	sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Esto habrá que ver si conviene
-	if (HAL_DAC_ConfigChannel( &hdac,
-							   &sConfig,
-							   CANAL_DAC[NUM_DAC]) != HAL_OK) uManejaError();
-  }
+    // Inicialización específica de DISPARO de DAC1 o DAC2 --------------------
 
-  return;
+    if ( DAC_CONFIG[ NUM_DAC ].Estado == NO_INICIALIZADO ) {
+	  DAC_ChannelConfTypeDef sConfig = {0};
+	  sConfig.DAC_Trigger      = DISPARO_DAC [NUM_DAC];
+	  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE; // Esto habrá que ver si conviene
+	  if (HAL_DAC_ConfigChannel( &hdac,
+								   &sConfig,
+								   CANAL_DAC[NUM_DAC]) != HAL_OK) uManejaError();
+	  DAC_CONFIG[ NUM_DAC ].Estado = INICIALIZADO;
+	  RETORNO = true;
+    }
+  }
+  return RETORNO;
 }
 
 /*-------------------------------------------------------------------------------------------------
- * @brief Configura el DAC.
- * @param DAC_NUM
- * @retval Frecuencia de muestreo
+ * @brief   Configura el DAC.
+ * @param   DAC_NUM
+ * @retval  Frecuencia de muestreo
+ *          Devuelve -1 si resulta error
  */
 double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUENCIA )
 {
+	// Precondición: estar en un estado permitido.
+	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO) {
+		// No aplica la función.
+		return -1; // Valos -1 significa error.
+	}
+
+	// Variables locales
 	uint32_t PERIODO = 0;
 	double CALCULO = 0;
 
@@ -163,35 +185,89 @@ double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUEN
 	DAC_CONFIG[NUM_DAC].Frecuencia_Configurada = uHALdacdmaLeerFrecuenciaMuestreo ( NUM_DAC );
 	return DAC_CONFIG[NUM_DAC].Frecuencia_Configurada;
 
-	if (1)
+	/*if (1)
 	//( DAC_CONFIG[ UHAL_DAC_1 ].Periodo  == DAC_CONFIG[ UHAL_DAC_2 ].Periodo )
 	{
 		uHALdacdmaSincronizar ();
-	}
+	}*/
 }
 
 /*-------------------------------------------------------------------------------------------------
- * @brief Devuelve la frecuencia de muestreo configurada
- * @param DAC_NUM
- * @retval frecuencia de muestreo configurada
+ * @brief   Devuelve la frecuencia de muestreo configurada
+ * @param   DAC_NUM
+ * @retval  Frecuencia de muestreo configurada
+ *          Devuelve -1 si resulta error
  */
 double uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t NUM_DAC)
 {
+	// Precondición: estar en un estado permitido.
+	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO) {
+		// No aplica la función.
+		return -1; // Valor -1 significa error.
+	}
+
+	// Cálculo...
 	double FM = 0;
-	/*uint32_t Cuenta = 0;
-	Cuenta = htim[NUM_DAC].Init.Prescaler+1;
-	Cuenta = Cuenta * htim[NUM_DAC].Init.Period+1; */
 	FM = U_CalculaFrecuencia_TIM ( htim[NUM_DAC].Init.Period );
 	return FM;
 }
 
 /*-------------------------------------------------------------------------------------------------
- * @brief Comienza a enviar Datos a salida por DAC
- * @param Puntero a Datos y cantidad de datos Num_Datos
- * @retval None
+ * @brief   Devuelve la frecuencia base común a todos los DACs
+ * @param   Ninguno
+ * @retval  Frecuencia base
  */
-void uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS)
+double uHALdacdmaFrecuenciaBase (void)
 {
+	return (double) U_FRECUENCIA_BASE;
+}
+
+/*-------------------------------------------------------------------------------------------------
+ * @brief   Devuelve la frecuencia máxima de muestreo que puede tener un DAC
+ * @param   Ninguno
+ * @retval  Frecuencia máxima
+ */
+double uHALdacdmaFrecuenciaMaxima (void)
+{
+	return ((double) U_FRECUENCIA_BASE) / (U_TIM_PERIODO_MIN+1);
+}
+
+/*-------------------------------------------------------------------------------------------------
+ * @brief   Devuelve la frecuencia mínima de muestreo que puede tener un DAC
+ * @param   Ninguno
+ * @retval  Frecuencia mínima
+ */
+double uHALdacdmaFrecuenciaMinima (void)
+{
+	return DAC_FRECUENCIA_MUESTREO_MINIMA;
+}
+
+/*-------------------------------------------------------------------------------------------------
+ * @brief   Devuelve el divisor de la frecuencia base con el que se logra la frecuencia deseada
+ * @param   Ninguno
+ * @retval  Divisor configurado
+ */
+uint32_t uHALdacdmaDivisorConfigurado (dac_id_t NUM_DAC)
+{
+	if (DAC_CONFIG [NUM_DAC].Estado == NO_INICIALIZADO) return 0;
+	return DAC_CONFIG [NUM_DAC].Periodo+1;
+}
+
+/*-------------------------------------------------------------------------------------------------
+ * @brief   Comienza a enviar Datos a salida por DAC
+ * @param   Canal DAC, puntero a DATOS y cantidad de datos NUM_DATOS
+ * @retval  None
+ */
+bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS)
+{
+	// Precondición: estar en un estado permitido.
+	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO ||
+		 DAC_CONFIG[NUM_DAC].Estado == ACTIVO           ) {
+		// La función no aplica
+		return false;
+	}
+
+	// Ejecutamos...
 	DAC_CONFIG[NUM_DAC].P_Senial = DATOS;
 	DAC_CONFIG[NUM_DAC].Muestras = NUM_DATOS;
 	HAL_DAC_Start_DMA( &hdac,
@@ -199,6 +275,8 @@ void uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS
 					   DATOS,
 					   NUM_DATOS,
 					   DAC_ALIGN_12B_R);
+	DAC_CONFIG[NUM_DAC].Estado = ACTIVO;
+	return true;
 }
 
 /*-------------------------------------------------------------------------------------------------
@@ -206,10 +284,17 @@ void uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS
   * @param None
   * @retval None
   */
-void uHALdacdmaParar ( dac_id_t NUM_DAC)
+bool uHALdacdmaParar ( dac_id_t NUM_DAC)
 {
-	HAL_DAC_Stop_DMA( &hdac,
-			          CANAL_DAC[NUM_DAC] );
+	// Precondición: estar en un estado permitido.
+	if ( DAC_CONFIG[NUM_DAC].Estado == ACTIVO ) {
+		HAL_DAC_Stop_DMA( &hdac,
+				          CANAL_DAC[NUM_DAC] );
+		DAC_CONFIG[NUM_DAC].Estado = PARADO;
+		return true;
+	} else {
+		return false;
+	}
 }
 
 /*-------------------------------------------------------------------------------------------------
@@ -217,53 +302,75 @@ void uHALdacdmaParar ( dac_id_t NUM_DAC)
   * @param None
   * @retval None
   */
-void uHALdacdmaReanudar ( dac_id_t NUM_DAC)
+bool uHALdacdmaReanudar ( dac_id_t NUM_DAC)
 {
-	HAL_DAC_Start_DMA( &hdac,
-			           CANAL_DAC[NUM_DAC],
-					   DAC_CONFIG[NUM_DAC].P_Senial,
-					   DAC_CONFIG[NUM_DAC].Muestras,
-					   DAC_ALIGN_12B_R);
+	// Precondición: estar en un estado permitido.
+	if ( DAC_CONFIG[NUM_DAC].Estado == PARADO ) {
+		HAL_DAC_Start_DMA( &hdac,
+				           CANAL_DAC[NUM_DAC],
+						   DAC_CONFIG[NUM_DAC].P_Senial,
+						   DAC_CONFIG[NUM_DAC].Muestras,
+						   DAC_ALIGN_12B_R);
+		DAC_CONFIG[NUM_DAC].Estado = ACTIVO;
+		return true;
+	} else {
+		return false;
+	}
 }
 
 /*-------------------------------------------------------------------------------------------------
-  * @brief Sincroniza ambas señales, si tienen igual frecuencia de muestreo y cantidad de muestras.
+  * @brief Sincroniza ambas señales, si están activas.
   * @param None
   * @retval None
   */
-void   uHALdacdmaSincronizar ( void )
+bool   uHALdacdmaSincronizar ( void )
 {
-	// TODO: verificar que ambas señales tengan misma frecuencia de muestreo y muestras
+	// Precondiciones:
+	// a) Debe estar en estado ACTIVO (corriendo)
+	if ( DAC_CONFIG[ UHAL_DAC_1 ].Estado != ACTIVO ||
+		 DAC_CONFIG[ UHAL_DAC_2 ].Estado != ACTIVO  ) {
+		return false;
+	}
+	/*
+	// b) Deben tener misma frecuencia de muestreo
+	if ( DAC_CONFIG[ UHAL_DAC_1 ].Frecuencia_Configurada !=
+		 DAC_CONFIG[ UHAL_DAC_2 ].Frecuencia_Configurada  ) {
+		return false;
+	}
+	// c) Deben tener la misma cantidad de muestras
+	if ( DAC_CONFIG[ UHAL_DAC_1 ].Muestras !=
+		 DAC_CONFIG[ UHAL_DAC_2 ].Muestras  ) {
+		return false;
+	}
+	*/
 
 	// 1) Paramos ambas señales y los temporizadores:
     uHALdacdmaParar ( UHAL_DAC_1 );
     uHALdacdmaParar ( UHAL_DAC_2 );
     U_TIM_DetenerTodos ();
 
-    // 2) Las reanudamos con sólo 1 (una) muestra para resetear contador DMA:
-	//    Dejamos los tempos parados.
-	//    Volvemoa a parar para reanudar con señal original.
+    // 2) Ejecutamos con una muestra (prueba)
+    HAL_DAC_Start_DMA( &hdac,
+    				   CANAL_DAC[UHAL_DAC_1],
+    				   DAC_CONFIG[UHAL_DAC_1].P_Senial,
+    				   1,
+    				   DAC_ALIGN_12B_R);
+    HAL_DAC_Start_DMA( &hdac,
+        			   CANAL_DAC[UHAL_DAC_2],
+        			   DAC_CONFIG[UHAL_DAC_2].P_Senial,
+        			   1,
+        			   DAC_ALIGN_12B_R);
+    HAL_DAC_Stop_DMA( &hdac,
+    		          CANAL_DAC[UHAL_DAC_1] );
+    HAL_DAC_Stop_DMA( &hdac,
+			          CANAL_DAC[UHAL_DAC_2] );
 
-    /*
-	HAL_DAC_Start_DMA( &hdac,
-			           CANAL_DAC[UHAL_DAC_1],
-					   DAC_CONFIG[UHAL_DAC_1].P_Senial,
-					   1,
-					   DAC_ALIGN_12B_R);
-	HAL_DAC_Stop_DMA ( &hdac, CANAL_DAC[UHAL_DAC_1] );
-
-	HAL_DAC_Start_DMA( &hdac,
-			           CANAL_DAC[UHAL_DAC_2],
-					   DAC_CONFIG[UHAL_DAC_2].P_Senial,
-					   1,
-					   DAC_ALIGN_12B_R);
-	HAL_DAC_Stop_DMA ( &hdac, CANAL_DAC[UHAL_DAC_2] );
-    */
-
-	// 4) Reanudamos...
+	// 3) Reanudamos pero iniciando temporizadores a la vez:
 	uHALdacdmaReanudar ( UHAL_DAC_1 );
 	uHALdacdmaReanudar ( UHAL_DAC_2 );
 	U_TIM_IniciarTodos ();
+
+	return true;
 }
 
 
@@ -289,12 +396,13 @@ static void U_TIM_Inicializar( dac_id_t NUM_DAC )
     TIM_MasterConfigTypeDef sMasterConfig = {0};
 
     // Cargo estructura de configuración y asigno configuración inicial (siempre igual)
-    htim[NUM_DAC].Instance          = (TIM_TypeDef *) TEMPO_DAC[NUM_DAC];  // TEMPOrizador para el DAC
-    htim[NUM_DAC].Init.Prescaler    = U_TIM_PREESCALADO;   // Pre-escalado que no modificaremos
-    htim[NUM_DAC].Init.CounterMode  = TIM_COUNTERMODE_UP;  // Cuenta ascendente
-    htim[NUM_DAC].Init.Period       = U_TIM_PERIODO_INI;   // Valor inicial que modificaremos
-    htim[NUM_DAC].Init.ClockDivision = U_TIM_DIVISOR;     // Divisor que no modificaremos
+    htim[NUM_DAC].Instance           = (TIM_TypeDef *) TEMPO_DAC[NUM_DAC];  // TEMPOrizador para el DAC
+    htim[NUM_DAC].Init.ClockDivision = U_TIM_DIVISOR;      // Divisor que no modificaremos
+    htim[NUM_DAC].Init.Prescaler     = U_TIM_PREESCALADO;  // Pre-escalado que no modificaremos
+    htim[NUM_DAC].Init.Period        = U_TIM_PERIODO_INI;  // Valor inicial que modificaremos
     htim[NUM_DAC].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE; // Permite cambiar conf
+    htim[NUM_DAC].Init.CounterMode   = TIM_COUNTERMODE_UP; // Cuenta ascendente
+
     if ( HAL_TIM_Base_Init(&htim[NUM_DAC]) != HAL_OK ) uManejaError();
 
     // Fuente de reloj para TEMPORIZADOR
@@ -321,8 +429,6 @@ static bool U_TIM_DetenerTodos   (void)
 {
     HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
 	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_2 ] );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , 0 );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , 1 );
 	return true;
 }
 
@@ -333,8 +439,6 @@ static bool U_TIM_DetenerTodos   (void)
   */
 static bool   U_TIM_IniciarTodos (void)
 {
-   //uint32_t tmpsmcr;
-
    /* Check the parameters */
    assert_param(IS_TIM_INSTANCE(htim[ UHAL_DAC_1 ]->Instance));
    assert_param(IS_TIM_INSTANCE(htim[ UHAL_DAC_2 ]->Instance));
@@ -343,19 +447,31 @@ static bool   U_TIM_IniciarTodos (void)
    if (htim[ UHAL_DAC_1 ].State != HAL_TIM_STATE_READY) return false;
    if (htim[ UHAL_DAC_2 ].State != HAL_TIM_STATE_READY) return false;
 
+   /* Variables locales */
+   uint32_t Cuenta1 = DAC_CONFIG[UHAL_DAC_1].Periodo;
+   uint32_t Cuenta2 = DAC_CONFIG[UHAL_DAC_1].Periodo;
+   for (uint8_t i; i<1; i++) {
+	   if (Cuenta1 > 0) Cuenta1--;   // Reduce el defasaje.
+   }
+
+   /*Cuenta1=0;
+   Cuenta2=0;*/
+
    /* Set the TIM state */
    htim[ UHAL_DAC_1 ].State = HAL_TIM_STATE_BUSY;
    htim[ UHAL_DAC_2 ].State = HAL_TIM_STATE_BUSY;
 
    /* Enable the Peripheral
     * Atención: en la función HAL original revisa si un temporizador está en modo esclavo para ser activado por otro tempo */
-     __HAL_TIM_ENABLE( &htim[ UHAL_DAC_1 ]);
-     __HAL_TIM_ENABLE( &htim[ UHAL_DAC_2 ]);
+   __HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , Cuenta1 );
+   __HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , Cuenta2 );
+   __HAL_TIM_ENABLE( &htim[ UHAL_DAC_1 ]);
+   __HAL_TIM_ENABLE( &htim[ UHAL_DAC_2 ]);
 
-	//HAL_TIM_Base_Start( &htim[ UHAL_DAC_1 ] );
-	//HAL_TIM_Base_Start( &htim[ UHAL_DAC_2 ] );
+   //HAL_TIM_Base_Start( &htim[ UHAL_DAC_1 ] );
+   //HAL_TIM_Base_Start( &htim[ UHAL_DAC_2 ] );
 
-    return true;
+   return true;
 }
 
 /*-------------------------------------------------------------------------------------------------

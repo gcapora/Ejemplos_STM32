@@ -1,8 +1,12 @@
 # Ejemplos para la placa Nucleo-144 de STM32
 
-En DACs hay un código que saca por los dos canales señales senoidales de frecuencia variable. 
-Por ahora funcionan con temporizadores independientes.
-Se ha logrado sincronizarlos si ambos canañes DMA se activan siempre con el mismo temporizador.
-Si utilizo temporizadores independientes, no logro resetear la cuenta del offset del DMA una vez comenzada. 
-Entonces, aunque tengan la misma frecuencia, no logro controlar el defasaje entre señales.
+## FreeRTOS
+Corresponden a ejemplos vistos en CESE-FIUBA.
 
+## Generador de señal
+Proyecto con una salida DAC utilizando DMA.
+
+## DACS
+Código que saca por los dos canales señales de frecuencia variable. 
+Funcionan con temporizadores independientes.
+Se pueden sincronizar señales de misma frecuencia (para verificar información de fase), con error de 50 ns entre señales.

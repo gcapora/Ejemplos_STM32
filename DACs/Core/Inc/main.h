@@ -47,8 +47,8 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
-#define MUESTRAS1 50
-#define MUESTRAS2 50
+#define MUESTRAS1 100
+#define MUESTRAS2 100
 
 /* USER CODE END EM */
 
