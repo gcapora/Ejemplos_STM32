@@ -11,6 +11,7 @@
 //#include <stdio.h>
 #include "math.h"
 #include "uOSAL.h"
+//#include "uHALdac.h"
 #include "uSeniales.h"
 
 /****** Definiciones privadas (macros) ***********************************************************/
@@ -25,7 +26,7 @@ double uSenFrecuenciaMuestrasBase;
 
 /****** Declaración de funciones privadas ********************************************************/
 
-bool   ConfigSenialVerificada (senial_config_s * ConfigDeseada);
+bool   ConfigSenialVerificada (senial_s * ConfigDeseada);
 double AcotarGrados (double Grados);
 
 /****** Definición de funciones privadas *********************************************************/
@@ -38,7 +39,7 @@ double AcotarGrados (double Grados);
 * @param  Estructura de senial con configuración deseada
 * @retval nada
 */
-void uGenerarSenial     ( senial_config_s * Senial )
+void uGenerarSenial     ( senial_s * Senial )
 {
 	// Elegimos qué otra función utilizar:
 	switch (Senial->Tipo) {
@@ -55,6 +56,14 @@ void uGenerarSenial     ( senial_config_s * Senial )
 	            // Hubo un error
 	        	uManejaError();
 	    }
+
+	/*
+	uartSendString( (uint8_t *) "--> Senial generada \n\r");
+	char Cadena[32] = {0};
+	sprintf(Cadena, "--> Largo %lu  \n\r", (uint32_t) Senial->Largo);
+	uartSendString((uint8_t *) Cadena);
+    */
+
 	return;
 }
 
@@ -64,7 +73,7 @@ void uGenerarSenial     ( senial_config_s * Senial )
 * @param  Estructura de senial con configuración deseada
 * @retval nada
 */
-void uGenerarTriangular ( senial_config_s * Senial )
+void uGenerarTriangular ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
     if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
@@ -100,7 +109,7 @@ void uGenerarTriangular ( senial_config_s * Senial )
 * @param  Estructura de senial con configuración deseada
 * @retval nada
 */
-void uGenerarSenoidal ( senial_config_s * Senial )
+void uGenerarSenoidal ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
     if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
@@ -128,7 +137,7 @@ void uGenerarSenoidal ( senial_config_s * Senial )
 * @param  Estructura de senial con configuración deseada
 * @retval nada
 */
-void uGenerarCuadrada ( senial_config_s * Senial )
+void uGenerarCuadrada ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
 	if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
@@ -164,7 +173,7 @@ void uGenerarCuadrada ( senial_config_s * Senial )
 *         Cantidad de muestras del vector
 * @retval nada
 */
-void uModificarNiveles ( senial_config_s * Senial, double Ganancia, uint32_t Continua)
+void uModificarNiveles ( senial_s * Senial, double Ganancia, uint32_t Continua)
 {
 
 }
@@ -175,7 +184,7 @@ void uModificarNiveles ( senial_config_s * Senial, double Ganancia, uint32_t Con
 *         Cantidad de muestras del vector
 * @retval nada
 */
-void uDefasar ( senial_config_s * Senial, double Defasaje)
+void uDefasar ( senial_s * Senial, double Defasaje)
 {
     // Verificamos precondiciones y hacemos correcciones
 	if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
@@ -201,7 +210,7 @@ void uDefasar ( senial_config_s * Senial, double Defasaje)
 * @param  Estructura de la señal con configuración deseada
 * @retval true si la operación fue exitosa
 */
-bool ConfigSenialVerificada (senial_config_s * Senial)
+bool ConfigSenialVerificada (senial_s * Senial)
 {
 	// Errores graves
 	if (Senial->Largo > MAX_N_MUESTRAS) uManejaError();

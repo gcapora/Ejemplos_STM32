@@ -40,7 +40,8 @@ typedef enum {
 typedef enum {
 	NO_INICIALIZADO,
 	INICIALIZADO,
-	ACTIVO,
+	ACTIVO_DMA,
+	ACTIVO_VALOR_FIJO,
 	PARADO
 } dac_estado;				// Para registrar estado de cada canal del DAC.
 
@@ -57,7 +58,8 @@ typedef struct {
 /****** Definición de datos públicos *************************************************************/
 
 const uint32_t MAXIMO_DAC[UHAL_CANTIDAD_DACS]        = { 3950, 4010 };
-const uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = { 50, 100 };
+const uint32_t MINIMO_DAC[UHAL_CANTIDAD_DACS]        = {   50,  100 };
+const uint32_t CERO_DAC  [UHAL_CANTIDAD_DACS]        = { 2000, 2050 };
 const double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS] = { 805.861e-6, 805.861e-6 };
 
 /****** Definición de datos privados *************************************************************/
@@ -144,6 +146,12 @@ bool uHALdacdmaInicializar ( dac_id_t NUM_DAC )
  */
 double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUENCIA )
 {
+
+	// uartSendString( (uint8_t *) "--/--> Frecuencia solicitada ");
+	// char Cadena[32] = {0};
+	// sprintf(Cadena, "--> Frecuencia solicitada %lu \n\r", (uint32_t) FRECUENCIA);
+	// uartSendString((uint8_t *) Cadena);
+
 	// Precondición: estar en un estado permitido.
 	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO) {
 		// No aplica la función.
@@ -169,19 +177,22 @@ double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUEN
 	DAC_CONFIG[NUM_DAC].Prescalado = U_TIM_PREESCALADO;
 	DAC_CONFIG[NUM_DAC].Periodo = PERIODO;
 
-	// Cargo estructura de configuración
+	// Cargamos estructura de configuración y cambiamos PERIODO
+    //HAL_TIM_Base_Stop( &htim[NUM_DAC] );
+	//U_TIM_DetenerTodos();
+
+	htim[NUM_DAC].Instance = (TIM_TypeDef *) TEMPO_DAC[NUM_DAC] ;
 	htim[NUM_DAC].Init.Prescaler = U_TIM_PREESCALADO;
 	htim[NUM_DAC].Init.Period = PERIODO;
-	htim[NUM_DAC].Instance = (TIM_TypeDef *) TEMPO_DAC[NUM_DAC] ;
 	htim[NUM_DAC].Init.CounterMode = TIM_COUNTERMODE_UP;
 	htim[NUM_DAC].Init.ClockDivision = U_TIM_DIVISOR;
 	htim[NUM_DAC].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
 
 	__HAL_TIM_SET_AUTORELOAD( &htim[NUM_DAC], PERIODO);
+	//HAL_TIM_Base_Start( &htim[NUM_DAC] );
+	//U_TIM_IniciarTodos();
 
-	// if ( HAL_TIM_Base_Init(&htim[NUM_DAC]) != HAL_OK ) uManejaError();
-	// HAL_TIM_Base_Start( &htim[NUM_DAC] );
-
+	// Evaluamos frecuencia resultante y retornamos
 	DAC_CONFIG[NUM_DAC].Frecuencia_Configurada = uHALdacdmaLeerFrecuenciaMuestreo ( NUM_DAC );
 	return DAC_CONFIG[NUM_DAC].Frecuencia_Configurada;
 
@@ -217,7 +228,7 @@ double uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t NUM_DAC)
  * @param   Ninguno
  * @retval  Frecuencia base
  */
-double uHALdacdmaFrecuenciaBase (void)
+double uHALdacdmaLeerFrecuenciaBase (void)
 {
 	return (double) U_FRECUENCIA_BASE;
 }
@@ -227,7 +238,7 @@ double uHALdacdmaFrecuenciaBase (void)
  * @param   Ninguno
  * @retval  Frecuencia máxima
  */
-double uHALdacdmaFrecuenciaMaxima (void)
+double uHALdacdmaLeerFrecuenciaMaxima (void)
 {
 	return ((double) U_FRECUENCIA_BASE) / (U_TIM_PERIODO_MIN+1);
 }
@@ -237,7 +248,7 @@ double uHALdacdmaFrecuenciaMaxima (void)
  * @param   Ninguno
  * @retval  Frecuencia mínima
  */
-double uHALdacdmaFrecuenciaMinima (void)
+double uHALdacdmaLeerFrecuenciaMinima (void)
 {
 	return DAC_FRECUENCIA_MUESTREO_MINIMA;
 }
@@ -247,7 +258,7 @@ double uHALdacdmaFrecuenciaMinima (void)
  * @param   Ninguno
  * @retval  Divisor configurado
  */
-uint32_t uHALdacdmaDivisorConfigurado (dac_id_t NUM_DAC)
+uint32_t uHALdacdmaLeerDivisor (dac_id_t NUM_DAC)
 {
 	if (DAC_CONFIG [NUM_DAC].Estado == NO_INICIALIZADO) return 0;
 	return DAC_CONFIG [NUM_DAC].Periodo+1;
@@ -261,8 +272,9 @@ uint32_t uHALdacdmaDivisorConfigurado (dac_id_t NUM_DAC)
 bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS)
 {
 	// Precondición: estar en un estado permitido.
-	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO ||
-		 DAC_CONFIG[NUM_DAC].Estado == ACTIVO           ) {
+	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO   ||
+		 DAC_CONFIG[NUM_DAC].Estado == ACTIVO_DMA        ||
+		 DAC_CONFIG[NUM_DAC].Estado == ACTIVO_VALOR_FIJO  ) {
 		// La función no aplica
 		return false;
 	}
@@ -275,7 +287,7 @@ bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS
 					   DATOS,
 					   NUM_DATOS,
 					   DAC_ALIGN_12B_R);
-	DAC_CONFIG[NUM_DAC].Estado = ACTIVO;
+	DAC_CONFIG[NUM_DAC].Estado = ACTIVO_DMA;
 	return true;
 }
 
@@ -284,17 +296,24 @@ bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS
   * @param None
   * @retval None
   */
-bool uHALdacdmaParar ( dac_id_t NUM_DAC)
+bool uHALdacParar ( dac_id_t NUM_DAC)
 {
+	bool RETORNO = false;
 	// Precondición: estar en un estado permitido.
-	if ( DAC_CONFIG[NUM_DAC].Estado == ACTIVO ) {
-		HAL_DAC_Stop_DMA( &hdac,
-				          CANAL_DAC[NUM_DAC] );
+
+	if ( DAC_CONFIG[NUM_DAC].Estado == ACTIVO_DMA ) {
+		// Venía funcionando con DMA ---------------------------------------
+		HAL_DAC_Stop_DMA( &hdac, CANAL_DAC[NUM_DAC] );
 		DAC_CONFIG[NUM_DAC].Estado = PARADO;
-		return true;
-	} else {
-		return false;
+		RETORNO = true;
+
+	} else if ( DAC_CONFIG[NUM_DAC].Estado == ACTIVO_VALOR_FIJO ) {
+		// Tenía un valor fijo ---------------------------------------------
+		HAL_DAC_Stop    ( &hdac, CANAL_DAC[NUM_DAC] );
+		DAC_CONFIG[NUM_DAC].Estado = PARADO;
+		RETORNO = true;
 	}
+	return RETORNO;
 }
 
 /*-------------------------------------------------------------------------------------------------
@@ -311,7 +330,7 @@ bool uHALdacdmaReanudar ( dac_id_t NUM_DAC)
 						   DAC_CONFIG[NUM_DAC].P_Senial,
 						   DAC_CONFIG[NUM_DAC].Muestras,
 						   DAC_ALIGN_12B_R);
-		DAC_CONFIG[NUM_DAC].Estado = ACTIVO;
+		DAC_CONFIG[NUM_DAC].Estado = ACTIVO_DMA;
 		return true;
 	} else {
 		return false;
@@ -326,17 +345,18 @@ bool uHALdacdmaReanudar ( dac_id_t NUM_DAC)
 bool   uHALdacdmaSincronizar ( void )
 {
 	// Precondiciones:
-	// a) Debe estar en estado ACTIVO (corriendo)
-	if ( DAC_CONFIG[ UHAL_DAC_1 ].Estado != ACTIVO ||
-		 DAC_CONFIG[ UHAL_DAC_2 ].Estado != ACTIVO  ) {
+	// a) Debe estar en estado ACTIVO_DMA (corriendo)
+	if ( DAC_CONFIG[ UHAL_DAC_1 ].Estado != ACTIVO_DMA ||
+		 DAC_CONFIG[ UHAL_DAC_2 ].Estado != ACTIVO_DMA  ) {
 		return false;
 	}
-	/*
+
 	// b) Deben tener misma frecuencia de muestreo
 	if ( DAC_CONFIG[ UHAL_DAC_1 ].Frecuencia_Configurada !=
 		 DAC_CONFIG[ UHAL_DAC_2 ].Frecuencia_Configurada  ) {
 		return false;
 	}
+	/*
 	// c) Deben tener la misma cantidad de muestras
 	if ( DAC_CONFIG[ UHAL_DAC_1 ].Muestras !=
 		 DAC_CONFIG[ UHAL_DAC_2 ].Muestras  ) {
@@ -345,8 +365,8 @@ bool   uHALdacdmaSincronizar ( void )
 	*/
 
 	// 1) Paramos ambas señales y los temporizadores:
-    uHALdacdmaParar ( UHAL_DAC_1 );
-    uHALdacdmaParar ( UHAL_DAC_2 );
+    uHALdacParar ( UHAL_DAC_1 );
+    uHALdacParar ( UHAL_DAC_2 );
     U_TIM_DetenerTodos ();
 
     // 2) Ejecutamos con una muestra (prueba)
@@ -373,6 +393,30 @@ bool   uHALdacdmaSincronizar ( void )
 	return true;
 }
 
+/*-------------------------------------------------------------------------------------------------
+  * @brief TIM Initialization Function
+  * @param Número de DAC al cual está asociado el TEMPO
+  * @retval None
+  */
+bool     uHALdacEstablecerValor ( dac_id_t DAC_ID, uint32_t VALOR)
+{
+	if ( DAC_CONFIG[ DAC_ID ].Estado == PARADO ||
+		 DAC_CONFIG[ DAC_ID ].Estado == INICIALIZADO ) {
+		// Aplica función --------------------------------------------
+		HAL_DAC_SetValue( &hdac,
+				          CANAL_DAC[ DAC_ID ],
+						  DAC_ALIGN_12B_R,
+						  VALOR);
+		HAL_DAC_Start   ( &hdac,
+				          CANAL_DAC[ DAC_ID ]);
+		DAC_CONFIG[ DAC_ID ].Estado = ACTIVO_VALOR_FIJO;
+		return true;
+
+	} else {
+		// No aplica función -----------------------------------------
+		return false;
+	}
+}
 
 /****** Definición de funciones privadas *********************************************************/
 

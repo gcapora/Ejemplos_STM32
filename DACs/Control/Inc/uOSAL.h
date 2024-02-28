@@ -12,6 +12,7 @@
 /****** Librerías (includes) *********************************************************************/
 
 #include <stdint.h>
+#include "API_uart.h" // temporal para prueba
 
 /****** Definiciones públicas (macros) ***********************************************************/
 

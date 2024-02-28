@@ -21,12 +21,13 @@
 /****** Librerías (includes) *********************************************************************/
 
 #include <stdint.h>
-#include "uHALdac.h" // Hace falta para el tipo enum dac_id_t
+#include <stdbool.h>
+//#include "uHALdac.h" // Hace falta para el tipo enum dac_id_t
                      // Incluye stdbool.h y stdint.h
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
-#define MAX_N_MUESTRAS 4096   // Esto debería estar en uSeniales_conf.h si existiera.
+#define MAX_N_MUESTRAS 5000   // Esto debería estar en uSeniales_conf.h si existiera.
 #define MINIMO_12B     0
 #define MAXIMO_12B     4095
 #define MEDIO_12B      2048
@@ -40,49 +41,33 @@ typedef enum {
 	SENOIDAL
 } senial_tipo;
 
-// Estructura para configurar señal deseada
+// Estructura para configurar y cargar una señal deseada
 typedef struct {
 	senial_tipo Tipo;
-	float       Amplitud;          // en voltios
-	float       Continua;          // en voltios
-	double      FrecuenciaDeseada; // en Hertz
+	uint32_t    Maximo;            // en cuentas
+    uint32_t    Minimo;            // en cuentas
 	float       Fase;              // en grados, entre 0º y 360º
 	float       Ciclo;             // número entre 0 y 1 (no aplica en senoidal)
-	double      FrecuenciaConfigurada;    // en Hertz
+    uint32_t    Largo;             // la cantidad de muestras
 	uint32_t    Muestra[MAX_N_MUESTRAS];  // las muestras de la senial
-	uint32_t    Largo;             // la cantidad de muestras
-	uint32_t    Maximo;            // en cuentas
-	uint32_t    Minimo;            // en cuentas
+	//float       Amplitud;          // en voltios
+	//float       Continua;          // en voltios
+	//double      FrecuenciaDeseada; // en Hertz
+	//double      FrecuenciaConfigurada;    // en Hertz
 	bool        Cargada;
-} senial_config_s;
-
-/*
-// Estados del generador
-typedef enum {
-	APAGADO,
-	DC,
-	AC,
-	CERO
-} gen_estados;
-
-// Estructura de control para un DAC-DMA
-typedef struct {
-	gen_estados       Estado;
-	senial_config_s * Senial;
-} generador_config_s;
-*/
+} senial_s;
 
 /****** Declaraciones de datos externos **********************************************************/
 
 
 /****** Declaración de funciones públicas ********************************************************/
 
-void uGenerarSenial     ( senial_config_s * Senial );
-void uGenerarTriangular ( senial_config_s * Senial );
-void uGenerarSenoidal   ( senial_config_s * Senial );
-void uGenerarCuadrada   ( senial_config_s * Senial );
-void uModificarNiveles  ( senial_config_s * Senial, double Ganancia, uint32_t Continua);
-void uDefasar           ( senial_config_s * Senial, double Defasaje);
+void uGenerarSenial     ( senial_s * Senial );
+void uGenerarTriangular ( senial_s * Senial );
+void uGenerarSenoidal   ( senial_s * Senial );
+void uGenerarCuadrada   ( senial_s * Senial );
+void uModificarNiveles  ( senial_s * Senial, double Ganancia, uint32_t Continua);
+void uDefasar           ( senial_s * Senial, double Defasaje);
 
 /*************************************************************************************************/
 #endif /* ISPEL_UOSAL_H_ */

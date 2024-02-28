@@ -31,31 +31,32 @@ void GenerarTriangular2 ( uint32_t * Senial, uint16_t Muestras)
 	return;
 }
 
-void ImprimirDatos( dac_id_t NUM_DAC )
+void ImprimirDatos( gen_id_e NUM_GEN )
 {
-	char Cadena[32] = {0};
+	gen_conf_s CONFIG = {0};
+	char Cadena[50] = {0};
 	uint16_t Muestras = 0;
+	uint32_t FS = 0;
 
-	if ( NUM_DAC == UHAL_DAC_1 ) {
-			uartSendString((uint8_t *) "DAC Numero 1:\n\r");
-			Muestras = MUESTRAS1;
+	if ( NUM_GEN == GENERADOR_1 ) {
+			uartSendString((uint8_t *) "Generador Numero 1: \n\r");
 	} else {
-			uartSendString((uint8_t *) "DAC Numero 2:\n\r");
-			Muestras = MUESTRAS2;
+			uartSendString((uint8_t *) "Generador Numero 2: \n\r");
 	}
 
-	uint32_t FM = (uint32_t) uHALdacdmaLeerFrecuenciaMuestreo ( NUM_DAC );
-	sprintf(Cadena, "%lu", (uint32_t) FM/1000);
-	// sprintf(Cadena, "%lu", sizeof(double));
-	uartSendString((uint8_t *) "Frecuencia de muestreo = ");
-	uartSendString((uint8_t *) Cadena);
-	uartSendString((uint8_t *) " kHz\n\r");
+	if ( uGeneradorLeerConfiguracion (NUM_GEN, &CONFIG) ) {
 
-	float FS = round((float) FM / (float) Muestras);
-	sprintf(Cadena, "%lu", (uint32_t) FS);
-	uartSendString((uint8_t *) "Frecuencia de senial = ");
-	uartSendString((uint8_t *) Cadena);
-	uartSendString((uint8_t *) " Hz\n\r");
+		FS       = (uint32_t) round(CONFIG.Frecuencia);
+	    sprintf(Cadena, "Frecuencia de senial = %lu Hz\n\r", (uint32_t) FS);
+	    uartSendString((uint8_t *) Cadena);
+
+	    Muestras = CONFIG.Largo;
+	    sprintf(Cadena, "Frecuencia de muestreo = %lu kHz\n\r", (uint32_t) FS*Muestras/1000);
+	    uartSendString((uint8_t *) Cadena);
+
+	} else {
+		uartSendString((uint8_t *) "(!) No pudimos leer configuración.\n\r");
+	}
 
 	//uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
 

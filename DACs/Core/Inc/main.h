@@ -32,6 +32,8 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "uGenerador.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -47,8 +49,8 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
-#define MUESTRAS1 100
-#define MUESTRAS2 100
+#define MUESTRAS1 200
+#define MUESTRAS2 200
 
 /* USER CODE END EM */
 
