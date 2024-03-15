@@ -14,6 +14,10 @@
  *  - La función uHALdacdmaSincronizar() puede sacar de servicio un tempo si ambas señales no
  *    tienen la misma frecuencia de muestreo. Se incluye una verificación antes de actuar.
  *
+ * Mejoras:
+ *  - Para sincronizar, se apagan las señales, se paran los tempos y luego se inicia todos junto.
+ *    Se puede sincronizar "al vuelo" si se implementa un sincronismo con un temporizador extra.
+ *
  *************************************************************************************************/
 
 #ifndef __ISPEL_UHALDAC_H
@@ -26,12 +30,12 @@
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
-#define UHAL_CANTIDAD_DACS          2
-#define FRECUENCIA_RELOJ            180000000 // Hz
-#define DAC_FRECUENCIA_MUESTREO_MAX 5000000   // 5 Msps. Considera un margen.
-#define MILLON                      1000000   // 1 millon :-)
-#define MHZ                         MILLON    // 1 megahertz
-#define KHZ                         1000      // 1 kilohertz
+#define UHAL_CANTIDAD_DACS          		2
+#define UHAL_FRECUENCIA_RELOJ				180000000 // Hz
+#define UHAL_DAC_FRECUENCIA_MUESTREO_MAX	5000000   // 5 Msps. Considera un margen.
+#define MILLON                      		1000000   // 1 millon :-)
+#define MHZ                        		 	MILLON    // 1 megahertz
+#define KHZ                         		1000      // 1 kilohertz
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
@@ -50,20 +54,17 @@ extern const double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS]; // Voltios / cuenta
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool     uHALdacdmaInicializar ( dac_id_t );
-double   uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t );
+bool     uHALdacInicializar ( dac_id_t );
+bool     uHALdacEstablecerValor ( dac_id_t, uint32_t);
+bool     uHALdacParar ( dac_id_t );
+bool     uHALdacdmaComenzar ( dac_id_t, uint32_t *, uint32_t );
 double   uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t, double );
+double   uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t );
 double   uHALdacdmaLeerFrecuenciaBase (void);
 double   uHALdacdmaLeerFrecuenciaMaxima (void);
 double   uHALdacdmaLeerFrecuenciaMinima (void);
 uint32_t uHALdacdmaLeerDivisor (dac_id_t);
-bool     uHALdacdmaComenzar ( dac_id_t, uint32_t *, uint32_t );
-bool     uHALdacParar ( dac_id_t );
-bool     uHALdacdmaReanudar ( dac_id_t );
 bool     uHALdacdmaSincronizar ( void );
-bool     uHALdacEstablecerValor ( dac_id_t, uint32_t);
-
-
 
 /*************************************************************************************************/
 #endif /* __ISPEL_UHALDAC_H */

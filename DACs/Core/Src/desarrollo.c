@@ -9,7 +9,7 @@
 
 void GenerarTriangular2 ( uint32_t * Senial, uint16_t Muestras)
 {
-	if (Muestras > MAX_N_MUESTRAS) Error_Handler();
+	if (Muestras > U_MAX_N_MUESTRAS) Error_Handler();
 	if (Muestras < 2) Error_Handler();
 
 	// Variables usadas...

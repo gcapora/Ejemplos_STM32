@@ -8,8 +8,10 @@
 
 /****** Librerías (includes) *********************************************************************/
 
-#include "stm32f4xx_hal.h"
+#include "uOSAL.h"
 #include "main.h"				// Acá debe estar Error_handler
+#include "stm32f4xx_hal.h"
+
 //#include "cmsis_os.h"
 //#include "FreeRTOS.h"
 
@@ -50,7 +52,31 @@ void uManejaError (void)
 	Error_Handler();
 }
 
+/*-------------------------------------------------------------------------------------------------
+ * @brief	Escribe texto por UART
+ * @param	Puntero a texto
+ * @retval  Ninguno
+ */
+void     uEscribirTexto ( char * P_TEXTO)
+{
+	uartSendString( (uint8_t *) P_TEXTO);
+}
 
+/*-------------------------------------------------------------------------------------------------
+ * @brief	Escribe texto y un número por UART
+ * @param	Puntero a texto y número entero positivo
+ * @retval  Ninguno
+ */
+void     uEscribirTextoEnteroP ( char * P_TEXTO, uint32_t ENTEROP)
+{
+    // Primero texto:
+	uartSendString( (uint8_t *) P_TEXTO);
 
+	// Luego número:
+    uint8_t Cadena[100] = {0};
+    sprintf( (char *) Cadena, " %lu\n\r", ENTEROP);
+    uartSendString(Cadena);
+
+}
 
 /****************************************************************** FIN DE ARCHIVO ***************/

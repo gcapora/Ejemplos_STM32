@@ -27,10 +27,10 @@
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
-#define MAX_N_MUESTRAS 5000   // Esto debería estar en uSeniales_conf.h si existiera.
-#define MINIMO_12B     0
-#define MAXIMO_12B     4095
-#define MEDIO_12B      2048
+#define U_MAX_N_MUESTRAS	0xFFFF  // Límite acorde a 16 bits de profundidad
+#define MINIMO_12B			0
+#define MAXIMO_12B			4095
+#define MEDIO_12B			2048
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
@@ -41,20 +41,33 @@ typedef enum {
 	SENOIDAL
 } senial_tipo;
 
+// Procesamiento último realizado a la estructura
+typedef enum {
+	E_NO_INICIALIZADA,
+	E_INICIALIZADA,
+	E_CARGADA,
+	E_EVALUADA
+} operacion_e;
+
 // Estructura para configurar y cargar una señal deseada
 typedef struct {
+	uint32_t *  Muestras_p;        // Puntero a las muestras de la señal.
+	uint32_t    LargoMaximo;       // Cantidad máxima de muestras que tiene la señal apuntada.
+	uint32_t    Largo;             // la cantidad de muestras
+    uint8_t     Multiplicador;     // Cantidad de ciclos que carga en las Largo muestras
+
 	senial_tipo Tipo;
 	uint32_t    Maximo;            // en cuentas
     uint32_t    Minimo;            // en cuentas
 	float       Fase;              // en grados, entre 0º y 360º
-	float       Ciclo;             // número entre 0 y 1 (no aplica en senoidal)
-    uint32_t    Largo;             // la cantidad de muestras
-	uint32_t    Muestra[MAX_N_MUESTRAS];  // las muestras de la senial
+	float       Simetria;          // Número entre 0 y 1. No aplica en senoidal.
+	                               // En cuadrada equivale a ciclo de trabajo.
+	// uint32_t    Muestra[U_MAX_N_MUESTRAS];  // las muestras de la senial
 	//float       Amplitud;          // en voltios
 	//float       Continua;          // en voltios
 	//double      FrecuenciaDeseada; // en Hertz
 	//double      FrecuenciaConfigurada;    // en Hertz
-	bool        Cargada;
+	operacion_e UltimaAccion;
 } senial_s;
 
 /****** Declaraciones de datos externos **********************************************************/

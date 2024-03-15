@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include "API_uart.h"
+#include "API_debounce.h"
 #include "uHALdac.h"
 #include "uSeniales.h"
 #include "desarrollo.h"
@@ -62,8 +63,8 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-senial_s SenialDAC1 = {0};
-senial_s SenialDAC2 = {0};
+//senial_s SenialDAC1 = {0};
+//senial_s SenialDAC2 = {0};
 uint32_t Valor_0V [UHAL_DAC_TODOS]  = {2000, 2055};
 gen_conf_s GenConfig = {0};
 double   Frecuencia = 0;
@@ -120,7 +121,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // ************************************************************************************
 
-
   // Reinicializo UART ------------------------------------------------------------------
   uartInit();			// Esto está duplicado pero no debería molestar.
   	  	  	  	  	  	// Sirve para probar mensaje de inicio.
@@ -131,52 +131,19 @@ int main(void)
   uartSendString((uint8_t *) "============================================================\n\r");
   //uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
 
+  // Inicializo botón de usuario --------------------------------------------------------
+  debounceFSM_init();
+
   // DACs -------------------------------------------------------------------------------
   uGeneradorInicializar ( GENERADORES_TODOS );
-  //uHALdacdmaInicializar ( UHAL_DAC_1 );
-  //uHALdacdmaInicializar ( UHAL_DAC_2 );
-
   uartSendString((uint8_t *) "SENIAL INICIAL\n\r");
   ImprimirDatos( GENERADOR_1 );
   ImprimirDatos( GENERADOR_2 );
-
-  // Seniales ---------------------------------------------------------------------------
-  /*
-  SenialDAC1.Tipo = TRIANGULAR;
-  SenialDAC1.Largo = MUESTRAS1;
-  SenialDAC1.Maximo = MAXIMO_DAC[UHAL_DAC_1];
-  SenialDAC1.Minimo = MINIMO_DAC[UHAL_DAC_1]; // + MAXIMO_DAC[UHAL_DAC_2];
-  SenialDAC1.Fase = 0;
-  SenialDAC1.Ciclo = 0.5;
-  uGenerarSenial ( &SenialDAC1 );
-  */
-  /*for (uint16_t j=0; j<MUESTRAS1; j++)
-  {
-	  SenialDAC1[j] = SenialDAC1[j] << 16U | SenialDAC1[j];
-  }*/
-  /*
-  SenialDAC2.Tipo = TRIANGULAR;
-  SenialDAC2.Largo = MUESTRAS2;
-  SenialDAC2.Maximo = MAXIMO_DAC[UHAL_DAC_2];
-  SenialDAC2.Minimo = MINIMO_DAC[UHAL_DAC_2]; // + MAXIMO_DAC[UHAL_DAC_2];
-  SenialDAC2.Fase = 0;
-  SenialDAC2.Ciclo = 0.5;
-  uGenerarSenial ( &SenialDAC2 );
-  */
-
   uGeneradorEncender ( GENERADORES_TODOS );
-  //uHALdacdmaComenzar ( UHAL_DAC_1, SenialDAC1.Muestra, SenialDAC1.Largo );
-  //uHALdacdmaComenzar ( UHAL_DAC_2, SenialDAC2.Muestra, SenialDAC2.Largo );
-
-  /*
-  if (uHALdacdmaSincronizar ()) {
-	  uartSendString((uint8_t *) "Seniales sincronizadas.\n\r");
-  } else {
-	  uartSendString((uint8_t *) "Fallo sincronizacion.\n\r");
-  }
-  */
   uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
-  HAL_Delay(3000);
+
+  // ------------------------------------------------------------------------------------
+  uint8_t SELECTOR = 0;
 
   // ************************************************************************************
   /* USER CODE END 2 */
@@ -192,82 +159,110 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	// Frecuencia 5 KHz ---------------------------------------------------------------------------
-	Frecuencia = 1000;
-	if ( uGeneradorLeerConfiguracion ( GENERADOR_1, &GenConfig )) {
-		GenConfig.Frecuencia = Frecuencia;
-		uGeneradorConfigurar ( GENERADOR_1, &GenConfig );
-		ImprimirDatos( GENERADOR_1 );
-	}
-	if ( uGeneradorLeerConfiguracion ( GENERADOR_2, &GenConfig )) {
-		GenConfig.Frecuencia = Frecuencia*2;
-		uGeneradorConfigurar ( GENERADOR_2, &GenConfig );
-		ImprimirDatos( GENERADOR_2 );
-	}
-    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
-    HAL_Delay(4000);
+	debounceFSM_update();
 
-    // Frecuencia 2,5 KHz -------------------------------------------------------------------------
-	Frecuencia = 500;
-	if ( uGeneradorLeerConfiguracion ( GENERADOR_1, &GenConfig )) {
-		GenConfig.Frecuencia = Frecuencia;
-		uGeneradorConfigurar ( GENERADOR_1, &GenConfig );
-		ImprimirDatos( GENERADOR_1 );
-	}
-	HAL_Delay(2000);
-	if ( uGeneradorLeerConfiguracion ( GENERADOR_2, &GenConfig )) {
-		GenConfig.Frecuencia = Frecuencia;
-		uGeneradorConfigurar ( GENERADOR_2, &GenConfig );
-		ImprimirDatos( GENERADOR_2 );
-	}
-    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
-    HAL_Delay(2000);
+	if (readKeyPush()) {  // Se presionó el botón...
 
-    // Valor mecio en salida 1 --------------------------------------------------------------------
-    uartSendString((uint8_t *) "\n\r/// Valor 0 V /// -----------------\n\r");
-    GenConfig.Acople = CERO;
-    uGeneradorConfigurar ( GENERADOR_1, &GenConfig );
-    ImprimirDatos( GENERADOR_1 );
-    HAL_Delay(2000);
+		switch (SELECTOR) {
+			case 0:
+				// Frecuencia 1 kHz y 2 kHz ---------------------------------------------------------------------------
+				Frecuencia = 11000;
+				if ( uGeneradorLeerConfiguracion ( GENERADOR_1, &GenConfig )) {
+					GenConfig.Frecuencia = Frecuencia;
+					GenConfig.Tipo = SENOIDAL;
+					GenConfig.Simetria = 0.5;
+					if (!uGeneradorConfigurar ( GENERADOR_1, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+					ImprimirDatos( GENERADOR_1 );
+				}
+				uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+				break;
 
-    uGeneradorConfigurar ( GENERADOR_2, &GenConfig );
-    ImprimirDatos( GENERADOR_2 );
+			case 1:
+				if ( uGeneradorLeerConfiguracion ( GENERADOR_2, &GenConfig )) {
+					GenConfig.Frecuencia = Frecuencia*2;
+					GenConfig.Tipo = SENOIDAL;
+					if (!uGeneradorConfigurar ( GENERADOR_2, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+					ImprimirDatos( GENERADOR_2 );
+				}
+				uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+				break;
 
-    //uHALdacdmaParar ( UHAL_DAC_1 );
-    //uHALdacdmaComenzar ( UHAL_DAC_1, &Valor_0V[UHAL_DAC_1], 1 );
-    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 200*KHZ );
-    //uHALdacdmaParar ( UHAL_DAC_2 );
-    //uHALdacdmaComenzar ( UHAL_DAC_2, &Valor_0V[UHAL_DAC_2], 1 );
-    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 200*KHZ );
-    //ImprimirDatos( UHAL_DAC_2 );
-    //uHALdacdmaSincronizar ();
-    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
-	HAL_Delay(2000);
+			case 2:
+				// Frecuencia 500 KHz triangular ----------------------------------------------------------------------
+				Frecuencia = 5500;
+				if ( uGeneradorLeerConfiguracion ( GENERADOR_1, &GenConfig )) {
+					GenConfig.Frecuencia = Frecuencia;
+					GenConfig.Tipo = TRIANGULAR;
+					GenConfig.Simetria = 0.2;
+					if (!uGeneradorConfigurar ( GENERADOR_1, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+					ImprimirDatos( GENERADOR_1 );
+				}
+				uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+				break;
 
-    //uHALdacdmaParar ( UHAL_DAC_1 );
-    //uHALdacdmaParar ( UHAL_DAC_2 );
-    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_1, 200*KHZ );
-    //ImprimirDatos( UHAL_DAC_1 );
-    //uHALdacdmaConfigurarFrecuenciaMuestreo ( UHAL_DAC_2, 400*KHZ );
-    //ImprimirDatos( UHAL_DAC_2 );
+			case 3:
+				if ( uGeneradorLeerConfiguracion ( GENERADOR_2, &GenConfig )) {
+					GenConfig.Frecuencia = Frecuencia;
+					GenConfig.Tipo = TRIANGULAR;
+					if (!uGeneradorConfigurar ( GENERADOR_2, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+					ImprimirDatos( GENERADOR_2 );
+				}
+			    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+			    break;
 
-    /*HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
-	HAL_TIM_Base_Stop( &htim[ UHAL_DAC_1 ] );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_1] , 0 );
-	__HAL_TIM_SET_COUNTER( &htim[UHAL_DAC_2] , 0 ); */
-    GenConfig.Acople = DC;
-    uGeneradorConfigurar ( GENERADORES_TODOS, &GenConfig );
+			case 4:
+				// Valor medio ---------------------------------------------------------------------------
+			    uartSendString((uint8_t *) "(!) Valor 0 V en salida 1 \n\r");
+			    GenConfig.Acople = CERO;
+			    //GenConfig.Ciclo = 0.5;
+				if (!uGeneradorConfigurar ( GENERADOR_1, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+			    //uGeneradorConfigurar ( GENERADOR_1, &GenConfig );
+			    //ImprimirDatos( GENERADOR_1 );
+			    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+			    break;
 
-    /*uHALdacdmaComenzar ( UHAL_DAC_1, SenialDAC1.Muestra, SenialDAC1.Largo );
-	uHALdacdmaComenzar ( UHAL_DAC_2, SenialDAC2.Muestra, SenialDAC2.Largo );
-	uHALdacdmaSincronizar ();*/
-    ImprimirDatos( GENERADOR_1 );
-    ImprimirDatos( GENERADOR_2 );
-    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
-	HAL_Delay(4000);
+			case 5:
+				if (!uGeneradorConfigurar ( GENERADOR_2, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+				uartSendString((uint8_t *) "(!) Valor 0 V en salida 2 \n\r");
+				//uGeneradorConfigurar ( GENERADOR_2, &GenConfig );
+			    //ImprimirDatos( GENERADOR_2 );
+			    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+			    break;
+
+			case 6:
+				// Apagamos
+				uGeneradorApagar( GENERADORES_TODOS);
+			    uartSendString((uint8_t *) "Apagamos los generadores...\n\r");
+				uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+				break;
+
+			case 7:
+				// Vuelve acople DC ---------------------------------------------------------------------
+				GenConfig.Acople = DC;
+				GenConfig.Tipo = CUADRADA;
+				GenConfig.Simetria = 0.2;
+			    //uGeneradorConfigurar ( GENERADORES_TODOS, &GenConfig );
+				if (!uGeneradorConfigurar ( GENERADORES_TODOS, &GenConfig )) uartSendString((uint8_t *) "(Algo no anduvo bien :-(\n\r");
+				uGeneradorEncender (GENERADORES_TODOS);
+			    ImprimirDatos( GENERADOR_1 );
+			    ImprimirDatos( GENERADOR_2 );
+			    uartSendString((uint8_t *) "------------------------------------------------------------\n\r");
+			    break;
+
+			default:
+				uartSendString((uint8_t *) "---ERROR------------------------------------------------------\n\r");
+		}
+
+		// Aumento próxima selección
+		SELECTOR++;
+		if (SELECTOR>7) SELECTOR = 0;
+    }
+
+  // Acá podría hacer otras cosas mientras tanto...
 
   }
   /* USER CODE END 3 */
+
 }
 
 /**

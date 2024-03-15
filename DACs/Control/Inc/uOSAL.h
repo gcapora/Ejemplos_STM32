@@ -12,7 +12,7 @@
 /****** Librerías (includes) *********************************************************************/
 
 #include <stdint.h>
-#include "API_uart.h" // temporal para prueba
+#include "API_uart.h" // provisorio para prueba
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
@@ -25,8 +25,10 @@
 
 /****** Declaración de funciones públicas ********************************************************/
 
-uint32_t uOSALmiliseg( void );
-void uManejaError ( void );
+uint32_t uOSALmiliseg ( void );
+void     uManejaError ( void );
+void     uEscribirTexto ( char * );
+void     uEscribirTextoEnteroP ( char *, uint32_t );
 
 /*************************************************************************************************/
 #endif /* ISPEL_UOSAL_H_ */

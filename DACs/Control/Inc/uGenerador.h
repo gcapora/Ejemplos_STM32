@@ -12,8 +12,10 @@
  *    Las funciones inicializan, configuran, encienden y apagan el generador.
  *    También puede devolver información sobre su propia configuración y la señal cargada.
  *
- * Problemas:
- * - La función Sincronizar
+ * Para mejorar:
+ *  - Almacenamos 4 bytes por muestra en la senial aunque usamos solo 12 bits. Debe probrarse
+ *    utilizando alineamiento derecha e izquierda de un mismo vector de 32 bits para almacenar dos
+ *    señales. Esto baja a la mitad la memoria utilizada por canal.
  *
  *************************************************************************************************/
 
@@ -26,6 +28,8 @@
                          // Ya incluye stdint y stdbool
 
 /****** Definiciones públicas (macros) ***********************************************************/
+
+#define UG_CANTIDAD_MUESTRAS_SENIAL    5000
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
@@ -53,7 +57,7 @@ typedef struct {
 	uint32_t     Divisor;      // de muestreo: establece por cuánto se divide la frecuancia base
 	uint32_t     Largo;        // cantidad de muestras de la señal resultante (solo salida)
 	float        Fase;         // en grados, entre 0º y 360º
-	float        Ciclo;        // número entre 0 y 1 (no aplica en senoidal)
+	float        Simetria;        // número entre 0 y 1 (no aplica en senoidal)
 	gen_acople_e Acople;
 } gen_conf_s;
 

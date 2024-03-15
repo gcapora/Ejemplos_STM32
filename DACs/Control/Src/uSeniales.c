@@ -8,10 +8,8 @@
 
 /****** Librerías (includes) *********************************************************************/
 
-//#include <stdio.h>
 #include "math.h"
 #include "uOSAL.h"
-//#include "uHALdac.h"
 #include "uSeniales.h"
 
 /****** Definiciones privadas (macros) ***********************************************************/
@@ -28,9 +26,100 @@ double uSenFrecuenciaMuestrasBase;
 
 bool   ConfigSenialVerificada (senial_s * ConfigDeseada);
 double AcotarGrados (double Grados);
+double Triangular   (double Grados, double Simetria);
+double Cuadrada     (double Grados, double CicloDeTrabajo);
 
 /****** Definición de funciones privadas *********************************************************/
 
+/**------------------------------------------------------------------------------------------------
+* @brief  Verifica valores de configuración y corrije algunos
+* @param  Estructura de la señal con configuración deseada
+* @retval true si la operación fue exitosa
+*/
+bool ConfigSenialVerificada (senial_s * Senial)
+{
+	// Errores graves
+	if (Senial->Largo > U_MAX_N_MUESTRAS) uManejaError();
+	if (Senial->Largo < 2) uManejaError();
+	if (Senial->Largo > Senial->LargoMaximo) uManejaError();
+
+	// Correcciones de ciclo y márgenes
+	if (Senial->Simetria > 1)        Senial->Simetria = 1;
+    if (Senial->Simetria < 0)        Senial->Simetria = 0;
+    if (Senial->Maximo > MAXIMO_12B) Senial->Maximo = MAXIMO_12B;
+    if (Senial->Minimo < MINIMO_12B) Senial->Minimo = MINIMO_12B;
+    if (Senial->Multiplicador == 0)  Senial->Multiplicador = 1;
+
+    // Llevamos los grados entre 0º y 360º
+    Senial->Fase = AcotarGrados( Senial->Fase );
+
+	return true;
+}
+
+/**------------------------------------------------------------------------------------------------
+* @brief  Acota los grados entre 0 y 360
+* @param  Grados origen
+* @retval Grados resultantes
+*/
+double AcotarGrados (double Grados)
+{
+    int32_t Multiplo = Grados / 360;
+    Grados = Grados - 360 * Multiplo;
+    if (Grados < 0) Grados += 360;
+    return Grados;
+}
+
+/**------------------------------------------------------------------------------------------------
+* @brief  Devuelve un valor entre -1 y 1 triangular
+* @param  Grados origen
+* @retval Valor entre -1 y 1
+*/
+double Triangular (double Grados, double Simetria)
+{
+	double Salida = 0;
+	double CuartoP = 180.0 * Simetria;
+	double MedioN  = 360.0 - CuartoP;
+	//double PendienteP = (double) 1/45 * Simetria;
+	//double PendienteN = (double) 1/45 * (1-Simetria);
+	//uEscribirTextoEnteroP ( "[dato] grados ", (uint32_t) Grados*1000 );
+
+	if ( Grados < 0 || Grados >= 360 ) Grados = AcotarGrados(Grados);
+	if ( Grados < CuartoP )       {
+		// Primer cuarto de onda
+		Salida =  0.0 + Grados / Simetria / 180;
+	} else if ( Grados < MedioN ) {
+		// Segundo y tercer cuarto
+		Salida =  1.0 - (Grados - CuartoP) / (1-Simetria) / 180;
+	} else if ( Grados < 360 )    {
+		// Cuarto cuarto
+		Salida = -1.0 + (Grados - MedioN) / Simetria / 180;
+	} else {
+		uManejaError();
+	}
+	return Salida;
+}
+
+/**------------------------------------------------------------------------------------------------
+* @brief  Devuelve un valor entre -1 y 1 de una señal cuadrada
+* @param  Grados origen
+*         Ciclo de Trabajo
+* @retval Valor entre -1 y 1
+*/
+double Cuadrada (double Grados, double CicloDeTrabajo)
+{
+	double Salida = 0;
+	if ( CicloDeTrabajo < 0 ) CicloDeTrabajo = 0;
+	if ( CicloDeTrabajo > 1 ) CicloDeTrabajo = 1;
+	if ( Grados < 0 || Grados >= 360 ) Grados = AcotarGrados(Grados);
+
+	if ( Grados < 360.0 * CicloDeTrabajo ) {
+		// Primera media onda encendida (si CdT = 50%)
+		Salida =  1;
+	} else {
+		Salida = -1;
+	}
+	return Salida;
+}
 
 /****** Definición de funciones públicas *********************************************************/
 
@@ -56,17 +145,8 @@ void uGenerarSenial     ( senial_s * Senial )
 	            // Hubo un error
 	        	uManejaError();
 	    }
-
-	/*
-	uartSendString( (uint8_t *) "--> Senial generada \n\r");
-	char Cadena[32] = {0};
-	sprintf(Cadena, "--> Largo %lu  \n\r", (uint32_t) Senial->Largo);
-	uartSendString((uint8_t *) Cadena);
-    */
-
 	return;
 }
-
 
 /**------------------------------------------------------------------------------------------------
 * @brief  Genera una señal triangular
@@ -78,29 +158,24 @@ void uGenerarTriangular ( senial_s * Senial )
     // Verificamos precondiciones y hacemos correcciones
     if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
 
-	// Variables locales
-    uint32_t CicloM   = Senial->Ciclo * Senial->Largo;
-    uint32_t PicoPico = Senial->Maximo - Senial->Minimo;
-	uint16_t i = 0;
+    // Variables locales
+   	uint32_t i = 0;
+   	double ValorMedio = ((double) ( Senial->Maximo + Senial->Minimo )) /2;
+   	double Amplitud   = ((double) ( Senial->Maximo - Senial->Minimo )) /2;
+   	double Omega      =  360.0 * Senial->Multiplicador / Senial->Largo;
+   	// uEscribirTextoEnteroP ( "[i] Largo implementado ", Senial->Largo );
 
-	// Cargo primer medio período
-	for ( i=0; i<=CicloM; i++)
-	{
-		Senial->Muestra[i] = Senial->Minimo + PicoPico * i / CicloM;
-	}
+   	// Cargo senial triangular
+    for ( i = 0; i < Senial->Largo; i++)
+    {
+    		Senial->Muestras_p[i] = ValorMedio +
+    				                Amplitud *
+									Triangular ( Omega * i + Senial->Fase, Senial->Simetria );
+    }
 
-	// Cargo segunda mitad
-	for ( i=CicloM+1; i<Senial->Largo; i++)
-	{
-		Senial->Muestra[i] = Senial->Maximo - PicoPico * (i-CicloM) / (Senial->Largo-CicloM);
-	}
-
-	// Adelanto la señal 90º
-	uDefasar(Senial, 90+Senial->Fase);
-
-	// Fin
+    // Fin
 	Senial->Tipo = TRIANGULAR;
-	Senial->Cargada = true;
+	Senial->UltimaAccion = E_CARGADA;
 	return;
 }
 
@@ -115,20 +190,24 @@ void uGenerarSenoidal ( senial_s * Senial )
     if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
 
 	// Variables locales
-	uint16_t i = 0;
+	uint32_t i = 0;
 	double ValorMedio = ((double) ( Senial->Maximo + Senial->Minimo )) /2;
 	double Amplitud   = ((double) ( Senial->Maximo - Senial->Minimo )) /2;
 	double FaseRadian = Senial->Fase * M_PI / 180;
+	double Omega      = 2 * M_PI * Senial->Multiplicador / Senial->Largo;
+	// uEscribirTextoEnteroP ( "[i] Largo implementado ", Senial->Largo );
 
 	// Cargo senial seno
-	for ( i = 0; i <= Senial->Largo; i++)
+	for ( i = 0; i < Senial->Largo; i++)
 	{
-		Senial->Muestra[i] = ValorMedio + Amplitud * sin( (double) i * 2 * M_PI / Senial->Largo + FaseRadian );
+		Senial->Muestras_p[i] = ValorMedio +
+				                Amplitud *
+								sin( (double) i * Omega + FaseRadian );
 	}
 
 	// Fin
 	Senial->Tipo = SENOIDAL;
-	Senial->Cargada = true;
+	Senial->UltimaAccion = E_CARGADA;
 	return;
 }
 
@@ -143,27 +222,23 @@ void uGenerarCuadrada ( senial_s * Senial )
 	if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
 
     // Variables locales
-    uint32_t CicloM = Senial->Ciclo * Senial->Largo;
-	uint16_t i = 0;
+	uint32_t i = 0;
+	double Omega      = 360.0 * Senial->Multiplicador / Senial->Largo;
+	double ValorMedio = ((double) ( Senial->Maximo + Senial->Minimo )) /2;
+    double Amplitud   = ((double) ( Senial->Maximo - Senial->Minimo )) /2;
 
-	// Cargo ciclo activo
-	for ( i=0; i<CicloM; i++)
+	// Cargo señal cuadrada
+	for ( i=0; i<Senial->Largo; i++)
 	{
-		Senial->Muestra[i] = Senial->Maximo;
-	}
 
-	// Cargo ciclo apagado
-	for ( i=CicloM; i<Senial->Largo; i++)
-	{
-		Senial->Muestra[i] = Senial->Minimo;
+		Senial->Muestras_p[i] = ValorMedio +
+                                Amplitud *
+				                Cuadrada ( Omega * i + Senial->Fase, Senial->Simetria );
 	}
-
-	// Adelanto la señal 90º
-	uDefasar(Senial, Senial->Fase);
 
 	// Fin
 	Senial->Tipo = CUADRADA;
-	Senial->Cargada = true;
+	Senial->UltimaAccion = E_CARGADA;
 	return;
 }
 
@@ -197,49 +272,12 @@ void uDefasar ( senial_s * Senial, double Defasaje)
 
     // Operación
     for ( i=0; i<delta_indice; i++) {      // Hay un defasaje que se debe hacer delta_indice veces
-    	intermedio = Senial->Muestra[0];   // Guardo el primer valor
+    	intermedio = Senial->Muestras_p[0];   // Guardo el primer valor
     	for ( j=0; j<Senial->Largo-1; j++) {  // Defaso la señal en un índice
-    		Senial->Muestra[j] = Senial->Muestra[j+1];
+    		Senial->Muestras_p[j] = Senial->Muestras_p[j+1];
     	}
-    	Senial->Muestra[Senial->Largo-1] = intermedio;  // Pongo al final el valor primero
+    	Senial->Muestras_p[Senial->Largo-1] = intermedio;  // Pongo al final el valor primero
     }
 }
-
-/**------------------------------------------------------------------------------------------------
-* @brief  Verifica valores de configuración y corrije algunos
-* @param  Estructura de la señal con configuración deseada
-* @retval true si la operación fue exitosa
-*/
-bool ConfigSenialVerificada (senial_s * Senial)
-{
-	// Errores graves
-	if (Senial->Largo > MAX_N_MUESTRAS) uManejaError();
-	if (Senial->Largo < 2) uManejaError();
-
-	// Correcciones de ciclo y márgenes
-	if (Senial->Ciclo > 1) Senial->Ciclo = 1;
-    if (Senial->Ciclo < 0) Senial->Ciclo = 0;
-    if (Senial->Maximo > MAXIMO_12B) Senial->Maximo = MAXIMO_12B;
-    if (Senial->Minimo < MINIMO_12B) Senial->Minimo = MINIMO_12B;
-
-    // Llevamos los grados entre 0º y 360º
-    Senial->Fase = AcotarGrados( Senial->Fase );
-
-	return true;
-}
-
-/**------------------------------------------------------------------------------------------------
-* @brief  Acota los grados entre 0 y 360
-* @param  Grados origen
-* @retval Grados resultantes
-*/
-double AcotarGrados (double Grados)
-{
-    int32_t Multiplo = Grados / 360;
-    Grados = Grados - 360 * Multiplo;
-    if (Grados < 0) Grados += 360;
-    return Grados;
-}
-
 
 /****************************************************************** FIN DE ARCHIVO ***************/
