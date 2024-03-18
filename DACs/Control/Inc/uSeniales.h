@@ -7,10 +7,10 @@
  * Descripción:
  *    Define al objeto señal, con su estructura y funciones asociadas.
  *    Para ser utilizada tanto para generación como captura y análisis de señales.
- *    El objeto generador y capturadora serán desarrollados en otras librerías.
  *
  * Pendiente:
- *    - Incorporar "Ciclo" en señal senoidal.
+ *    - Lograr especificar el alineamiento de los datos dentro del vector, de modo de almacenar dos
+ *      señales en el vector de 32 bits.
  *    - Hacer más eficiente la función uDefasar().
  *
  *************************************************************************************************/

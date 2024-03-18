@@ -15,6 +15,8 @@
  *    tienen la misma frecuencia de muestreo. Se incluye una verificación antes de actuar.
  *
  * Mejoras:
+ *  - Se debe incorporar la posibilidad de configurar el alineamiento de datos dentro del vector de
+ *    32 bits donde está almacenada la señal.
  *  - Para sincronizar, se apagan las señales, se paran los tempos y luego se inicia todos junto.
  *    Se puede sincronizar "al vuelo" si se implementa un sincronismo con un temporizador extra.
  *

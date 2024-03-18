@@ -6,8 +6,8 @@
  *
  * Descripción:
  *    Desarrolla el objeto Generador visto desde el operario.
- *    Básicamente define una estructura gen_config_s con los parámetros de la configuración deseada
- *    y otra estructura con el estado y datos del modo de funcionamiento resultante.
+ *    Define una estructura gen_config_s con los parámetros de la configuración deseada y otra
+ *    estructura del generador con el estado y los datos del modo de funcionamiento resultante.
  *    Dentro de esta estructura, hay un puntero a la señal cargada en el generador.
  *    Las funciones inicializan, configuran, encienden y apagan el generador.
  *    También puede devolver información sobre su propia configuración y la señal cargada.
@@ -87,7 +87,6 @@ bool uGeneradorEncender    (gen_id_e);
 bool uGeneradorApagar      (gen_id_e);
 bool uGeneradorLeerConfiguracion   (gen_id_e, gen_conf_s *);
 gen_estados_e uGeneradorLeerEstado (gen_id_e);
-
 
 /*************************************************************************************************/
 #endif /* ISPEL_UGENERADOR_H_ */
