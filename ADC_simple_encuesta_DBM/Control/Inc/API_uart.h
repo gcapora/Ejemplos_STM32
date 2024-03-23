@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "stm32f4xx_hal.h"
+#include "uOSAL.h"
 //#include "stm32f4xx_nucleo_144.h"
 
 /* Exported types ------------------------------------------------------------*/

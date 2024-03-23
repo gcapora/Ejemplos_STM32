@@ -5,6 +5,7 @@
 *******************************************************************************/
 
 /* Includes ------------------------------------------------------------------*/
+//#include <stm32f4xx_hal_uart.h>
 #include "API_uart.h"
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,7 +94,7 @@ bool_t uartInit() {
   */
 void uartSendString(uint8_t * pstring) {
 	// ¿El puntero es válido?
-	if (pstring == NULL) Error_Handler();
+	if (pstring == NULL) uHuboError();
 
 	// Cuento cantidad de caracteres de la cadena a enviar:
 	uint16_t size = (uint16_t) strlen((char *) pstring);
@@ -116,7 +117,7 @@ void uartSendString(uint8_t * pstring) {
   */
 void uartSendStringSize(uint8_t * pstring, uint16_t size) {
 	// ¿El puntero es válido?
-	if (pstring == NULL) Error_Handler();
+	if (pstring == NULL) uHuboError();
 
 	// Verifico que el largo no supere el largo de la cadena:
 	uint16_t realSize = (uint16_t) strlen((char *) pstring);
@@ -137,7 +138,7 @@ void uartSendStringSize(uint8_t * pstring, uint16_t size) {
   */
 bool_t uartReceiveStringSize(uint8_t * pstring, uint16_t size) {
 	// ¿El puntero es válido?
-	if (pstring == NULL) Error_Handler();
+	if (pstring == NULL) uHuboError();
 
 	// Verifico que no se supere el máximo:
 	size = (size>maxSize) ? maxSize : size;
