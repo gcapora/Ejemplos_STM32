@@ -2,11 +2,12 @@
  * Archivo: uSeniales.h
  * Breve:	Generador y manejador de seniales. Proyecto ISPEL.
  * Fecha:	Creado en noviembre 2023
- * Autor:	Guillermo F. Caporaletti
+ * Autor:
  *
  * Descripción:
  *    Define al objeto señal, con su estructura y funciones asociadas.
  *    Para ser utilizada tanto para generación como captura y análisis de señales.
+ *    Las muestras de la señal son de 12 bits.
  *
  * Pendiente:
  *    - Lograr especificar el alineamiento de los datos dentro del vector, de modo de almacenar dos
@@ -22,8 +23,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-//#include "uHALdac.h" // Hace falta para el tipo enum dac_id_t
-                     // Incluye stdbool.h y stdint.h
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
@@ -34,14 +33,24 @@
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
-// Tipos de seniales
+// Tipos de seniales ------------------------------------------------------------------------------
 typedef enum {
 	CUADRADA,
 	TRIANGULAR,
 	SENOIDAL
 } senial_tipo;
 
-// Procesamiento último realizado a la estructura
+// Tipos de alineamiento --------------------------------------------------------------------------
+/* Se presupone que los datos son de 12 bits (almacenados en 16).
+   En ningún caso deben modificarse los 16 bits que no corresponden con el alineamiento.
+   Este tipo enumeracón aún no está impemetado en la librería <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< */
+typedef enum {
+	DERECHA_32,		// Datos almacenados en los 16 bits menos significativos de uint32_t
+	IZQUIERDA_32,   // Datos almacenados en los 16 bits más significativos de uint32_t
+	DERECHA_16      // Simplemente un número de 16 bits en uint16_t
+} alineacion_e;
+
+// Procesamiento último realizado a la estructura -------------------------------------------------
 typedef enum {
 	E_NO_INICIALIZADA,
 	E_INICIALIZADA,
@@ -49,11 +58,18 @@ typedef enum {
 	E_EVALUADA
 } operacion_e;
 
-// Estructura para configurar y cargar una señal deseada
+// Estructura para configurar y cargar una señal deseada ------------------------------------------
 typedef struct {
 	uint32_t *  Muestras_p;        // Puntero a las muestras de la señal.
-	uint32_t    LargoMaximo;       // Cantidad máxima de muestras que tiene la señal apuntada.
-	uint32_t    Largo;             // la cantidad de muestras
+	// Debe modificarse por void * de modo de que
+	// pueda ser utilizado como vector uint16_t o uint32_t <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	// Otra forma podría ser agregar otro puntero uint16_t
+
+	uint32_t    LargoMaximo;       // Cantidad máxima de muestras que tiene el vector apuntado.
+	uint32_t    Largo;             // La cantidad de muestras utilizadas de ese vector.
+	uint32_t    Inicio;            // Muestra que representa el tiempo 0.
+	                               // Puede haber señal antes de ese tiempo.
+	                               // Dato utilizado por la capturadora.
     uint8_t     Multiplicador;     // Cantidad de ciclos que carga en las Largo muestras
 
 	senial_tipo Tipo;
@@ -62,11 +78,7 @@ typedef struct {
 	float       Fase;              // en grados, entre 0º y 360º
 	float       Simetria;          // Número entre 0 y 1. No aplica en senoidal.
 	                               // En cuadrada equivale a ciclo de trabajo.
-	// uint32_t    Muestra[U_MAX_N_MUESTRAS];  // las muestras de la senial
-	//float       Amplitud;          // en voltios
-	//float       Continua;          // en voltios
-	//double      FrecuenciaDeseada; // en Hertz
-	//double      FrecuenciaConfigurada;    // en Hertz
+
 	operacion_e UltimaAccion;
 } senial_s;
 
@@ -81,6 +93,7 @@ void uGenerarSenoidal   ( senial_s * Senial );
 void uGenerarCuadrada   ( senial_s * Senial );
 void uModificarNiveles  ( senial_s * Senial, double Ganancia, uint32_t Continua);
 void uDefasar           ( senial_s * Senial, double Defasaje);
+void uEvaluar           ( senial_s * Senial);  // Función a implementar <<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 /*************************************************************************************************/
 #endif /* ISPEL_UOSAL_H_ */

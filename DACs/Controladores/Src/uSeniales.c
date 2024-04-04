@@ -24,7 +24,7 @@ double uSenFrecuenciaMuestrasBase;
 
 /****** Declaración de funciones privadas ********************************************************/
 
-bool   ConfigSenialVerificada (senial_s * ConfigDeseada);
+bool   ConfigSenialVerificada (senial_s * );
 double AcotarGrados (double Grados);
 double Triangular   (double Grados, double Simetria);
 double Cuadrada     (double Grados, double CicloDeTrabajo);
@@ -278,6 +278,17 @@ void uDefasar ( senial_s * Senial, double Defasaje)
     	}
     	Senial->Muestras_p[Senial->Largo-1] = intermedio;  // Pongo al final el valor primero
     }
+}
+
+/**------------------------------------------------------------------------------------------------
+* @brief  Evalua la senial
+* @param  Senial a evaluar
+* @retval nada
+*         Debe cargar en la estructura de la señal, el valor máximo y mínimo del vector.
+*/
+void uEvaluar ( senial_s * Senial)
+{
+
 }
 
 /****************************************************************** FIN DE ARCHIVO ***************/
