@@ -143,7 +143,7 @@ int main(void)
 					PROMEDIO += AD_RES[j];
 		}
 		PROMEDIO = PROMEDIO / MUESTRAS;
-		TIM2->CCR1 = ( (PROMEDIO & 0xFFFF) <<4 );
+		TIM2->CCR1 = ( (PROMEDIO & 0xFFFF) <<4 ); // Salida PWM
 		EscribirDatos(Num_Conversiones);
 	}
 

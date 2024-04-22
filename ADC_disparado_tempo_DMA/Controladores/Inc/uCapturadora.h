@@ -1,35 +1,51 @@
 /**************************************************************************************************
- * Archivo: uOSAL.h
- * Breve:	Capa de abstracción de sistema operativo (OSAL). Proyecto ISPEL.
- * Fecha:	Creado en agosto 2023
+ * Archivo: uHALadc.h
+ * Breve:
+ * Fecha:
  * Autor:	Guillermo F. Caporaletti
  *
  *************************************************************************************************/
 
-#ifndef ISPEL_UOSAL_H_
-#define ISPEL_UOSAL_H_
+#ifndef ISPEL_UCAPTURADORA_H_
+#define ISPEL_UCAPTURADORA_H_
 
 /****** Librerías (includes) *********************************************************************/
 
-#include <stdint.h>
-#include "API_uart.h" // provisorio para prueba
+#include "uHALadc.h"
+#include "uOSAL.h"
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
+#define CAPTURADORAS_CANTIDAD          		2
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
+typedef enum {
+	CAPTURADORA_1,
+	CAPTURADORA_2,
+	CAPTURADORA_3,
+	CAPTURADORAS_TODAS
+} capturadora_id_e;
+
+typedef enum {
+	SUBIDA,
+	BAJA,
+	AMBOS
+} flanco_e;
+
+typedef struct {
+	float    EscalaHorizontal;	// Intervalo almacenado desde disparo
+	float    EscalaVertical;	// Máxima tensión positiva
+	double   NivelDisparo;
+	flanco_e FlancoDisparo;
+} capturadora_config_s;
 
 /****** Declaraciones de datos externos **********************************************************/
 
 
 /****** Declaración de funciones públicas ********************************************************/
 
-uint32_t uOSALmilisegundos ( void );
-void     uManejaError ( void );
-void     uEscribirTexto ( char * );
-void     uEscribirTextoEnteroP ( char *, uint32_t );
 
 /*************************************************************************************************/
-#endif /* ISPEL_UOSAL_H_ */
+#endif /*  */
 /****************************************************************** FIN DE ARCHIVO ***************/

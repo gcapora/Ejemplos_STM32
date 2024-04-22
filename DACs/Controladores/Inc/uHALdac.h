@@ -45,7 +45,7 @@ typedef enum {
 	UHAL_DAC_1,
 	UHAL_DAC_2,
 	UHAL_DAC_TODOS
-} dac_id_t;
+} dac_id_e;
 
 /****** Declaración de datos públicos ************************************************************/
 
@@ -56,16 +56,16 @@ extern const double   TRANSFERENCIA_DAC[UHAL_CANTIDAD_DACS]; // Voltios / cuenta
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool     uHALdacInicializar ( dac_id_t );
-bool     uHALdacEstablecerValor ( dac_id_t, uint32_t);
-bool     uHALdacParar ( dac_id_t );
-bool     uHALdacdmaComenzar ( dac_id_t, uint32_t *, uint32_t );
-double   uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t, double );
-double   uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t );
+bool     uHALdacInicializar ( dac_id_e );
+bool     uHALdacEstablecerValor ( dac_id_e, uint32_t);
+bool     uHALdacParar ( dac_id_e );
+bool     uHALdacdmaComenzar ( dac_id_e, uint32_t *, uint32_t );
+double   uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_e, double );
+double   uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_e );
 double   uHALdacdmaLeerFrecuenciaBase (void);
 double   uHALdacdmaLeerFrecuenciaMaxima (void);
 double   uHALdacdmaLeerFrecuenciaMinima (void);
-uint32_t uHALdacdmaLeerDivisor (dac_id_t);
+uint32_t uHALdacdmaLeerDivisor (dac_id_e);
 bool     uHALdacdmaSincronizar ( void );
 
 /*************************************************************************************************/

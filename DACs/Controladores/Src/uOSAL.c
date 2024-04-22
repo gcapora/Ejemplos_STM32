@@ -37,7 +37,7 @@
   * @param	Ninguno
   * @retval Milisegundo actual
   */
-uint32_t uOSALmiliseg( void )
+uint32_t uOSALmilisegundos( void )
 {
 	return (uint32_t) HAL_GetTick(); // Esta función está en milisegundos.
 }

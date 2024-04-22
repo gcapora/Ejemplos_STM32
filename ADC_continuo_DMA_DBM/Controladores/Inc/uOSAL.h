@@ -12,10 +12,14 @@
 /****** Librerías (includes) *********************************************************************/
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "API_uart.h" // provisorio para prueba
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
+#define MILLON                      		1000000   // 1 millon :-)
+#define MHZ                        		 	MILLON    // 1 megahertz
+#define KHZ                         		1000      // 1 kilohertz
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 

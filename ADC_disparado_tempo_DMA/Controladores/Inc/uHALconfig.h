@@ -1,18 +1,16 @@
 /**************************************************************************************************
- * Archivo: uOSAL.h
- * Breve:	Capa de abstracción de sistema operativo (OSAL). Proyecto ISPEL.
- * Fecha:	Creado en agosto 2023
+ * Archivo: uHALconfig.h
+ * Breve:	Configuración de aplicación específica para los módulos uHAL
+ * Fecha:
  * Autor:	Guillermo F. Caporaletti
  *
  *************************************************************************************************/
 
-#ifndef ISPEL_UOSAL_H_
-#define ISPEL_UOSAL_H_
+#ifndef ISPEL_UHALCONFIG_H_
+#define ISPEL_UHALCONFIG_H_
 
 /****** Librerías (includes) *********************************************************************/
 
-#include <stdint.h>
-#include "API_uart.h" // provisorio para prueba
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
@@ -25,11 +23,7 @@
 
 /****** Declaración de funciones públicas ********************************************************/
 
-uint32_t uOSALmilisegundos ( void );
-void     uManejaError ( void );
-void     uEscribirTexto ( char * );
-void     uEscribirTextoEnteroP ( char *, uint32_t );
 
 /*************************************************************************************************/
-#endif /* ISPEL_UOSAL_H_ */
+#endif /* ISPEL_UHALCONFIG_H_ */
 /****************************************************************** FIN DE ARCHIVO ***************/

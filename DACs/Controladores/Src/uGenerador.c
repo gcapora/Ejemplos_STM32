@@ -44,9 +44,9 @@ static gen_manejo_s Generador [CANTIDAD_GENERADORES] = {0};
 
 /****** Declaración de funciones privadas ********************************************************/
 
-float    uGenEstimarVoltios (uint32_t, dac_id_t);
-uint32_t uGenEstimarCuentas (float, dac_id_t);
-bool     uGenConfiguradoDesdeSenial (dac_id_t);
+float    uGenEstimarVoltios (uint32_t, dac_id_e);
+uint32_t uGenEstimarCuentas (float, dac_id_e);
+bool     uGenConfiguradoDesdeSenial (dac_id_e);
 bool     uGenConfiguracionesSonIguales (gen_conf_s, gen_conf_s);
 
 /****** Definición de funciones privadas *********************************************************/
@@ -56,7 +56,7 @@ bool     uGenConfiguracionesSonIguales (gen_conf_s, gen_conf_s);
 * @param
 * @retval
 */
-float    uGenEstimarVoltios (uint32_t NUM32, dac_id_t DAC_ID)
+float    uGenEstimarVoltios (uint32_t NUM32, dac_id_e DAC_ID)
 {
 	return (float) ( (double) NUM32 - (double) CERO_DAC[DAC_ID] ) * TRANSFERENCIA_DAC[DAC_ID];
 }
@@ -66,7 +66,7 @@ float    uGenEstimarVoltios (uint32_t NUM32, dac_id_t DAC_ID)
 * @param
 * @retval
 */
-uint32_t uGenEstimarCuentas (float VOLT, dac_id_t DAC_ID)
+uint32_t uGenEstimarCuentas (float VOLT, dac_id_e DAC_ID)
 {
 	return (uint32_t) ( round( VOLT/TRANSFERENCIA_DAC[DAC_ID] ) + (double) CERO_DAC[DAC_ID] );
 }
@@ -76,9 +76,9 @@ uint32_t uGenEstimarCuentas (float VOLT, dac_id_t DAC_ID)
 * @param
 * @retval
 */
-bool  uGenConfiguradoDesdeSenial (dac_id_t GEN)
+bool  uGenConfiguradoDesdeSenial (dac_id_e GEN)
 {
-	dac_id_t DAC_N = (dac_id_t) GEN;
+	dac_id_e DAC_N = (dac_id_e) GEN;
 	Generador[GEN].Configurar.Tipo   = Generador[GEN].Senial.Tipo;
 	Generador[GEN].Configurar.Maximo = uGenEstimarVoltios (Generador[GEN].Senial.Maximo, DAC_N);
 	Generador[GEN].Configurar.Minimo = uGenEstimarVoltios (Generador[GEN].Senial.Minimo, DAC_N);
@@ -124,7 +124,7 @@ bool uGeneradorInicializar (gen_id_e GEN)
 
 	// Variables locales
 	bool RETORNO = false;
-	dac_id_t DAC_N = (dac_id_t) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
+	dac_id_e DAC_N = (dac_id_e) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
 	uint32_t LARGO0 = LARGO_INICIAL;
 	if ( GEN == GENERADOR_1 ) LARGO0 = LARGO0 * 3;
 	if (LARGO0 > UG_CANTIDAD_MUESTRAS_SENIAL) LARGO0 = UG_CANTIDAD_MUESTRAS_SENIAL;
@@ -201,7 +201,7 @@ bool uGeneradorConfigurar  (gen_id_e GEN, gen_conf_s * CONFIG)
 		return RETORNO;
 	}
 
-	dac_id_t  DAC_N = (dac_id_t) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
+	dac_id_e  DAC_N = (dac_id_e) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
 	double    FrecMuestreo = 0;
 	double    PeriodoFraccional = 1;
 	uint32_t  delta = 0;
@@ -234,9 +234,9 @@ bool uGeneradorConfigurar  (gen_id_e GEN, gen_conf_s * CONFIG)
 		                               // Ahora el largo total puede incluir más de un período.
 
 		// Regenero senial:
-		delta = uOSALmiliseg ();
+		delta = uOSALmilisegundos ();
 		uGenerarSenial ( &Generador[GEN].Senial );
-		delta = uOSALmiliseg () - delta;
+		delta = uOSALmilisegundos () - delta;
 		uEscribirTextoEnteroP ( "[info] Generar senial demoro (ms) ", delta );
 
 		// Copio configuracion establecida desde senial: (pudo variar...)
@@ -287,7 +287,7 @@ bool uGeneradorEncender (gen_id_e GEN)
 
 	// Variables locales
 	bool RETORNO = false;
-	dac_id_t DAC_N = (dac_id_t) GEN;  // Esto lo puedo hacer porque la cantidad de
+	dac_id_e DAC_N = (dac_id_e) GEN;  // Esto lo puedo hacer porque la cantidad de
 	                                  // generadores y DACs es la misma.
 
     // Evalúo si se solicita encender todos:
@@ -327,7 +327,7 @@ bool uGeneradorApagar      (gen_id_e GEN)
 
 	// Variables locales
     bool   RETORNO = false;
-    dac_id_t DAC_N = (dac_id_t) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
+    dac_id_e DAC_N = (dac_id_e) GEN;  // Esto vale si cantidad de generadores y DACs es la misma.
 
 	// Evalúo si se solicita configurar todos:
 	if ( GEN == GENERADORES_TODOS ) {

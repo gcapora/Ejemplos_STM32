@@ -79,12 +79,12 @@ static dac_config_privada_s DAC_CONFIG [UHAL_CANTIDAD_DACS]  = {0};
 
 /****** Declaración de funciones privadas ********************************************************/
 
-static void   U_TIM_Inicializar  ( dac_id_t );
+static void   U_TIM_Inicializar  ( dac_id_e );
 static bool   U_TIM_DetenerTodos (void);
 static bool   U_TIM_IniciarTodos (void);
-static void   U_DMA_Inicializar  ( dac_id_t );
+static void   U_DMA_Inicializar  ( dac_id_e );
 static double U_CalculaFrecuencia_TIM ( uint32_t PERIODO );
-bool          uHALdacdmaReanudar ( dac_id_t );
+bool          uHALdacdmaReanudar ( dac_id_e );
 
 /****** Definición de funciones públicas *********************************************************/
 
@@ -93,7 +93,7 @@ bool          uHALdacdmaReanudar ( dac_id_t );
  * @param
  * @retval Frecuencia de muestreo
  */
-bool uHALdacInicializar ( dac_id_t NUM_DAC )
+bool uHALdacInicializar ( dac_id_e NUM_DAC )
 {
   bool RETORNO = false;
 
@@ -145,7 +145,7 @@ bool uHALdacInicializar ( dac_id_t NUM_DAC )
  * @retval  Frecuencia de muestreo
  *          Devuelve -1 si resulta error
  */
-double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUENCIA )
+double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_e NUM_DAC, double FRECUENCIA )
 {
 	// Precondición: estar en un estado permitido.
 	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO) {
@@ -203,7 +203,7 @@ double uHALdacdmaConfigurarFrecuenciaMuestreo ( dac_id_t NUM_DAC, double FRECUEN
  * @retval  Frecuencia de muestreo configurada
  *          Devuelve -1 si resulta error
  */
-double uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_t NUM_DAC)
+double uHALdacdmaLeerFrecuenciaMuestreo ( dac_id_e NUM_DAC)
 {
 	// Precondición: estar en un estado permitido.
 	if ( DAC_CONFIG[NUM_DAC].Estado == NO_INICIALIZADO) {
@@ -252,7 +252,7 @@ double uHALdacdmaLeerFrecuenciaMinima (void)
  * @param   Ninguno
  * @retval  Divisor configurado
  */
-uint32_t uHALdacdmaLeerDivisor (dac_id_t NUM_DAC)
+uint32_t uHALdacdmaLeerDivisor (dac_id_e NUM_DAC)
 {
 	if (DAC_CONFIG [NUM_DAC].Estado == NO_INICIALIZADO) return 0;
 	return DAC_CONFIG [NUM_DAC].Periodo+1;
@@ -263,7 +263,7 @@ uint32_t uHALdacdmaLeerDivisor (dac_id_t NUM_DAC)
  * @param   Canal DAC, puntero a DATOS y cantidad de datos NUM_DATOS
  * @retval  None
  */
-bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS)
+bool uHALdacdmaComenzar ( dac_id_e NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS)
 {
 	// Precondición: estar en un estado permitido.
 	if ( DAC_CONFIG[NUM_DAC].Estado != PARADO ) {
@@ -291,7 +291,7 @@ bool uHALdacdmaComenzar ( dac_id_t NUM_DAC, uint32_t * DATOS, uint32_t NUM_DATOS
   * @param None
   * @retval None
   */
-bool uHALdacParar ( dac_id_t NUM_DAC)
+bool uHALdacParar ( dac_id_e NUM_DAC)
 {
 	bool RETORNO = false;
 	// Precondición: estar en un estado permitido.
@@ -372,7 +372,7 @@ bool   uHALdacdmaSincronizar ( void )
   * @param Número de DAC al cual está asociado el TEMPO
   * @retval None
   */
-bool     uHALdacEstablecerValor ( dac_id_t DAC_ID, uint32_t VALOR)
+bool     uHALdacEstablecerValor ( dac_id_e DAC_ID, uint32_t VALOR)
 {
 	if ( DAC_CONFIG[ DAC_ID ].Estado == PARADO ) {
 		// Aplica función --------------------------------------------
@@ -399,7 +399,7 @@ bool     uHALdacEstablecerValor ( dac_id_t DAC_ID, uint32_t VALOR)
   * @param None
   * @retval None
   */
-bool uHALdacdmaReanudar ( dac_id_t NUM_DAC)
+bool uHALdacdmaReanudar ( dac_id_e NUM_DAC)
 {
 	// Precondición: estar en un estado permitido.
 	if ( DAC_CONFIG[NUM_DAC].Estado == PARADO ) {
@@ -420,7 +420,7 @@ bool uHALdacdmaReanudar ( dac_id_t NUM_DAC)
   * @param Número de DAC al cual está asociado el TEMPO
   * @retval None
   */
-static void U_TIM_Inicializar( dac_id_t NUM_DAC )
+static void U_TIM_Inicializar( dac_id_e NUM_DAC )
 {
   if ( UHAL_DAC_TODOS == NUM_DAC ) {
 	// Inicializo todos los DACs
@@ -518,7 +518,7 @@ static bool   U_TIM_IniciarTodos (void)
   * @param
   * @retval None
   */
-static void U_DMA_Inicializar( dac_id_t NUM_DAC )
+static void U_DMA_Inicializar( dac_id_e NUM_DAC )
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
