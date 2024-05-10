@@ -13,6 +13,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "uOSAL.h"
 #include "uHAL.h"
+#include "uCapturadora.h"
 #include "main.h"
 //#include "adc.h"
 //#include "dma.h"
@@ -22,18 +23,24 @@
 /* Private macro -------------------------------------------------------------*/
 
 #define DELTA       100
-#define MUESTRAS    200
-#define PREMUESTRAS 40
+#define MUESTRAS    60
+#define PREMUESTRAS 20
+#define PREDESCARTE 10
 #define NIVEL       1500
 #define HISTERESIS  20
 #define N_CAPTURAS  16
 
 /* Private variables ---------------------------------------------------------*/
 
-const adc_id_e ADC_12 = UHAL_ADC_1;  // Identificador para ADC_1 y ADC_2
+//const adc_id_e ADC_12 = UHAL_ADC_1;  // Identificador para ADC_1 y ADC_2
 uint32_t ADC_CONVERTIDO [ MUESTRAS ] = {0};
 uint32_t ADC_SUMA       [ MUESTRAS ] = {0};
 uint8_t  ADC_CANTIDAD   [ MUESTRAS ] = {0};
+adc_config_s ADC_CONFIG;
+
+entrada_config_s CAPTU_1 = {0};
+entrada_config_s CAPTU_2 = {0};
+
 float    PROMEDIO = 0;
 float    PROMEDIO_TOTAL = 0;
 volatile uint32_t Num_Conversiones = 0;
@@ -72,36 +79,55 @@ int main(void)
 
   /* Initialize all configured peripherals */
   uHALinicializar    ();
-  uHALadcInicializar ( ADC_12 );
-  //uHALmapInicializar ( UHAL_MAP_PE5 );
   uHALmapInicializar ( UHAL_MAP_TODOS );
-  //MX_GPIO_Init();
-  //MX_DMA_Init();
-  //MX_ADC1_Init();
-  //MX_TIM3_Init();
-  //MX_ADC2_Init();
-  //MX_TIM9_Init();
+  uCapturadoraInicializar();
 
   //-----------------------------------------------------------------------------
 
   uLedEncender ( UOSAL_PIN_LED_AZUL_INCORPORADO );
+
   uEscribirTexto ("\n\r\n\r");
   uEscribirTexto ("============================================================\n\r");
-  uEscribirTexto ("ADC dual con DMA (abril 2024)\n\r");
+  uEscribirTexto ("ADC dual con DMA (mayo 2024)\n\r");
   uEscribirTexto ("============================================================\n\r");
 
-  //uHALmapEncender ( UHAL_MAP_PE5 );				// Inicio señal cuadrada
-  uHALmapEncender ( UHAL_MAP_TODOS );
-  Tiempo_us = uOSALmicrosegundos();         	// Leo inicio de conteo en us.
-  uHALadcComenzarLectura ( ADC_12, 				// Lanzamos primer muestreo en ADC 1 y 2
-		                     ADC_CONVERTIDO,	// Vector donde almaceno lo muestreado
-									MUESTRAS );			// Largo del vector
+  uEscribirTextoEnteroSS ("Frecuencia de senial cuadrada = ", (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 100e3 ) / 1000 );
+  uEscribirTexto         (" kHz. \n\r");
+
+
+  // Cambiamos frecuencia de muestro (en ADC1)
+  /*ADC_CONFIG.FrecuenciaMuestreo = 1e6;
+  ADC_CONFIG.Canal = U_ADC_CANAL_1;
+  if ( false == uHALadcConfigurar (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();*/
+  //if ( false == uHALadcObtener    (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();
+
+  // Cambiamos canal de ADC2
+  //ADC_CONFIG.Canal = U_ADC_CANAL_1;
+  //if ( false == uHALadcConfigurar (UHAL_ADC_2,&ADC_CONFIG) ) uHuboError();
+
+  // Escribimos resultado
+  if ( false == uHALadcObtener    (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();
+  uEscribirTextoEnteroSS ("Frecuencia de muestreo        = ", (uint32_t) ADC_CONFIG.FrecuenciaMuestreo / 1000);
+  uEscribirTexto         (" kHz. \n\r");
+
+  // Inicio señal cuadrada
+  uHALmapEncender ( UHAL_MAP_PE5 );
+  Tiempo_us = uMicrosegundos();         	// Leo inicio de conteo en us.
+  do {} while (uMicrosegundos() - Tiempo_us < 1e3 ); // Este retardo sirve para que la señal cuadrada inicie.
+
+  // Iniciamos captura
+  if ( false == uHALadcComenzarLectura ( UHAL_ADC_1, 			// Lanzamos primer muestreo en ADC 1 y 2
+		                                   ADC_CONVERTIDO,	// Vector donde almaceno lo muestreado
+									              MUESTRAS ) ) { 	// Largo del vector
+	  uLedApagar ( UOSAL_PIN_LED_AZUL_INCORPORADO );
+  }
+  uEscribirTexto ("Muestreando... \n\r");
 
   //-----------------------------------------------------------------------------------------------
   while (1)
   {
 
-	  if ( (uOSALmicrosegundos () - Tiempo_us > 500000) && (Num_Conversiones <  N_CAPTURAS) ) {
+	  if ( (uMicrosegundos () - Tiempo_us > 500000) && (Num_Conversiones <  N_CAPTURAS) ) {
 		  // Si pasó medio segundo, muestro qué tengo:
 		  uEscribirTexto ("Sobretiempo... \n\r");
 		  Nueva_Lectura = true;
@@ -116,20 +142,18 @@ int main(void)
 
 		  // ¿Lanzamos nuevo muestreo?
 		  if ( Num_Conversiones <  N_CAPTURAS ) {
-			  uHALadcComenzarLectura ( ADC_12, ADC_CONVERTIDO, MUESTRAS );
+			  uHALadcComenzarLectura ( UHAL_ADC_1, ADC_CONVERTIDO, MUESTRAS );
 		  }
 
 		  // ¿Terminamos muestreo?
 		  if ( Num_Conversiones == N_CAPTURAS ) {
-			  Tiempo_us = uOSALmicrosegundos() - Tiempo_us;
+			  Tiempo_us = uMicrosegundos() - Tiempo_us;
 			  EscribirDatos (Num_Conversiones);
 			  uEscribirTextoEnteroSS ("Tardamos ", Tiempo_us);
 			  uEscribirTexto (" us. \n\r");
 			  uLedApagar ( UOSAL_PIN_LED_AZUL_INCORPORADO );
 
-			  uEscribirTextoEnteroSS ("Dejamos PAM en ",
-					                    (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 10000 ));
-			  uEscribirTexto (" Hz. \n\r");
+
 		  }
 	  }
   } // -----> fin de loop
@@ -201,9 +225,9 @@ void PromediarConDisparo(void)
 
 	// Evalúo si la señal inicia por encima del nivel buscado:
 	// (aplico máscada de ADC1)
-	if ( ( ADC_CONVERTIDO[0]&0xFFFF ) >= NIVEL) bajo = false;
+	if ( ( ADC_CONVERTIDO[PREDESCARTE]&0xFFFF ) >= NIVEL) bajo = false;
 
-	for (int disparo=0; disparo<MUESTRAS; disparo++) {
+	for (int disparo=PREDESCARTE; disparo<MUESTRAS; disparo++) {
 
 		// Supondremos por ahora siempre flanco de subida
 		if ( bajo && ( (ADC_CONVERTIDO[disparo]&0xFFFF) >= NIVEL) ) {
@@ -213,9 +237,11 @@ void PromediarConDisparo(void)
     			inicio = disparo - PREMUESTRAS;
     		}
 
-            if ( disparo < PREMUESTRAS ) {
+         if ( disparo < PREMUESTRAS ) {
             	final = MUESTRAS + disparo - PREMUESTRAS;
-            }
+         }
+
+         inicio = (inicio > PREDESCARTE) ? inicio : PREDESCARTE;
 
 	    	// Hubo disparo!!! :-)
 	    	for (int i=inicio; i<final; i++) {

@@ -16,6 +16,10 @@
 
 /****** Definiciones privadas (macros) ***********************************************************/
 
+#define Prescaler0      24    // Pre-escalado inicial de los tempos
+#define Periodo0        6000  // Período inicial
+#define CicloActivo0    3000  // Parte del período que la salida está activa
+
 
 /****** Definiciones privadas de tipos (private typedef) *****************************************/
 
@@ -76,9 +80,9 @@ bool uHALmapInicializar ( map_id_e ID )
    	// uOSALledEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
 
    	Tempo_admin[ID].Instance = Instance_seleccionada;
-   	Tempo_admin[ID].Init.Prescaler = 23;  // Valor inicial que reduce frecuencia
+   	Tempo_admin[ID].Init.Prescaler = Prescaler0-1;        // Valor inicial que reduce frecuencia
    	Tempo_admin[ID].Init.CounterMode = TIM_COUNTERMODE_UP;
-   	Tempo_admin[ID].Init.Period = 5999;     // Valor inicial que pone período
+   	Tempo_admin[ID].Init.Period = Periodo0-1;             // Valor inicial que pone período
    	Tempo_admin[ID].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
    	Tempo_admin[ID].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
       if (HAL_TIM_Base_Init(&Tempo_admin[ID]) != HAL_OK) uHuboError();
@@ -89,7 +93,7 @@ bool uHALmapInicializar ( map_id_e ID )
       if (HAL_TIM_PWM_Init( &Tempo_admin[ID]) != HAL_OK) uHuboError();
 
       sConfigOC.OCMode = TIM_OCMODE_PWM1;
-      sConfigOC.Pulse = 3000;  // Valor inicial para CdT
+      sConfigOC.Pulse = CicloActivo0;                        // Valor inicial para CdT
       sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
       sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
       if (HAL_TIM_PWM_ConfigChannel( &Tempo_admin[ID], &sConfigOC, TIM_CHANNEL_1) != HAL_OK) uHuboError();

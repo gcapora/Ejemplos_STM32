@@ -1,7 +1,7 @@
 /**************************************************************************************************
  * Archivo: uHALadc.h
- * Breve:
- * Fecha:
+ * Breve:   Capa HAL para manejo simultáneo de ADC1 y ADC2.
+ * Fecha:   Mayo 2024
  * Autor:	Guillermo F. Caporaletti
  *
  *************************************************************************************************/
@@ -15,6 +15,8 @@
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
+#define UHAL_ADC_FRECUENCIA_MUESTREO_MAXIMA   2.4e6
+#define UHAL_ADC_FRECUENCIA_MUESTREO_MINIMA   100
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
@@ -26,9 +28,14 @@ typedef enum {
 	UHAL_ADC_TODOS
 } adc_id_e;
 
+typedef enum {
+	U_ADC_CANAL_1,
+	U_ADC_CANAL_2
+} adc_canal_e;
+
 typedef struct {
-	uint32_t Canal;
-	uint32_t FrecuenciaMuestreo;
+	adc_canal_e Canal;
+	double		FrecuenciaMuestreo;
 } adc_config_s;
 
 /****** Declaraciones de datos externos **********************************************************/
@@ -36,10 +43,12 @@ typedef struct {
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool    uHALadcInicializar            ( adc_id_e );                        // Config estática en uHALconfig.h
-bool    uHALadcDesInicializar         ( adc_id_e );                        // Falta implementar
-bool    uHALadcConfigurar             ( adc_id_e, adc_config_s * );        // Config dinámica
-bool    uHALadcComenzarLectura        ( adc_id_e, uint32_t *, uint32_t );
+bool	uHALadcInicializar            ( adc_id_e );                        // Config estática en uHALconfig.h
+//bool	uHALadcDesInicializar         ( adc_id_e );                        // Falta implementar
+bool  uHALadcConfigurar             ( adc_id_e, adc_config_s * );        // Config dinámica
+bool  uHALadcObtener                ( adc_id_e, adc_config_s * );        // Leer config
+bool  uHALadcComenzarLectura        ( adc_id_e, uint32_t *, uint32_t );
+bool	uHALadcPararLectura 				( adc_id_e );
 void	uHALadcLecturaCompletada      ( adc_id_e );                        // Redefinir en aplicación
 void	uHALadcMediaLecturaCompletada ( adc_id_e );                        // Redefinir en aplicación
 

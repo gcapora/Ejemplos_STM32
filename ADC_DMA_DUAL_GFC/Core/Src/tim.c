@@ -40,12 +40,15 @@ void MX_TIM3_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
-
+  // ---------------------------------------------------------------------------------
+  // 2 Msps == 6x6
+  // htim3.Init.Prescaler = 6-1;
+  // htim3.Init.Period = 6-1;
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 5;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 119;
+  htim3.Init.Period = 5	;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -121,9 +124,14 @@ void MX_TIM9_Init(void)
 
   /* USER CODE BEGIN TIM9_Init 1 */
 
+  // FRECUENCIA 50 kHz -----------------------------------------------------------------
+  // htim9.Init.Prescaler = 143; // Lleva frecuencia a 1 MHz
+  // htim9.Init.Period = 19;     // Ahora es 50 kHz
+  // sConfigOC.Pulse = 10;       // 50% de CdT
+
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 999;
+  htim9.Init.Prescaler = 9;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim9.Init.Period = 143;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;

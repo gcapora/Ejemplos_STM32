@@ -11,6 +11,7 @@
 
 /****** Librerías (includes) *********************************************************************/
 
+//#include "uHALconfig.h"
 
 /****** Definiciones públicas (macros) ***********************************************************/
 
@@ -18,7 +19,7 @@
 #define UOSAL_FRECUENCIA_RELOJ				144000000.0
 
 // Contador de microsegundos ----------------------------------------------------------------------
-#define UOSAL_MICROSEGUNDOS_TEMPO         TIM5          // Tempo para contar microsegundos
+#define UOSAL_MICROSEGUNDOS_TEMPO         TIM5 //UHAL_MICROSEGUNDOS_TEMPO  // Tempo para contar microsegundos
 
 // Leds incorporados ------------------------------------------------------------------------------
 #define UOSAL_PUERTO_LEDS_INCORPORADOS    GPIOB

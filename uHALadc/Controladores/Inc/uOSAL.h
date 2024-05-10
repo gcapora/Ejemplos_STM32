@@ -30,8 +30,8 @@ typedef bool bool_t;   // Esto es una finura... :-)
 /****** Declaración de funciones públicas ********************************************************/
 
 bool     uOSALinicializar       	( void );
-uint32_t uOSALmilisegundos      	( void );
-uint32_t uOSALmicrosegundos   	( void );
+uint32_t uMilisegundos      		( void );
+uint32_t uMicrosegundos   			( void );
 void     uLedEncender       		( uint16_t );
 void     uLedApagar         		( uint16_t );
 void     uLedInvertir       		( uint16_t );

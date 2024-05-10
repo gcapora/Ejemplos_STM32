@@ -78,7 +78,7 @@ bool uOSALinicializar ( void )
   * @param	Ninguno
   * @retval Milisegundo actual
   */
-uint32_t uOSALmilisegundos ( void )
+uint32_t uMilisegundos ( void )
 {
 	return (uint32_t) HAL_GetTick(); // Esta función está en milisegundos.
 }
@@ -88,7 +88,7 @@ uint32_t uOSALmilisegundos ( void )
   * @param	Ninguno
   * @retval Milisegundo actual
   */
-uint32_t uOSALmicrosegundos (void)
+uint32_t uMicrosegundos (void)
 {
 	return (uint32_t) __HAL_TIM_GET_COUNTER (&htim_microsegundos);
 }

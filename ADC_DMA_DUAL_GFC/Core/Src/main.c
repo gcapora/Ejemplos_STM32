@@ -36,9 +36,10 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define DELTA       100
-#define MUESTRAS    200
-#define PREMUESTRAS 40
+#define DELTA       150
+#define MUESTRAS    140
+#define PREMUESTRAS 60
+#define PREDESCARTE 40
 #define NIVEL       1500
 #define HISTERESIS  20
 #define N_CAPTURAS  16
@@ -64,6 +65,7 @@ uint32_t Tiempo_us = 0;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void EscribirDatos(uint32_t);
+void EscribirPromedio (void);
 void PromediarConDisparo(void);
 
 /* USER CODE END PFP */
@@ -143,7 +145,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	//---------------------------------------------------------------------------------------------
 
-	if ( (uOSALmicrosegundos () - Tiempo_us > 500000) && (Num_Conversiones <  N_CAPTURAS) ) {
+	if ( (uOSALmicrosegundos () - Tiempo_us > 2e6) && (Num_Conversiones <  N_CAPTURAS) ) {
 	  // Si pasó medio segundo, muestro qué tengo:
 	  uEscribirTexto ("Sobretiempo... \n\r");
 	  Nueva_Lectura = true;
@@ -155,17 +157,18 @@ int main(void)
 
 	  // Promediamos muestra a muestra
 	  PromediarConDisparo();
+	  //EscribirDatos (Num_Conversiones);
 
 	  if ( Num_Conversiones <  N_CAPTURAS ) {
-		// Lanzo nuevo muestreo:
-		HAL_ADC_Start (&hadc2);
-	    HAL_ADCEx_MultiModeStart_DMA (&hadc1, (uint32_t *) ADC_CONVERTIDO, MUESTRAS );
+		 // Lanzo nuevo muestreo:
+		 //HAL_ADC_Start (&hadc2);
+	    //HAL_ADCEx_MultiModeStart_DMA (&hadc1, (uint32_t *) ADC_CONVERTIDO, MUESTRAS );
 	    HAL_TIM_Base_Start(&htim3);
 	  }
 
 	  if ( Num_Conversiones == N_CAPTURAS ) {
 		Tiempo_us = uOSALmicrosegundos() - Tiempo_us;
-		EscribirDatos (Num_Conversiones);
+		EscribirPromedio ();
 		uEscribirTextoEnteroSS ("Tardamos ", Tiempo_us);
 		uEscribirTexto (" us. \n\r");
 	  }
@@ -225,16 +228,19 @@ void SystemClock_Config(void)
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
 	uOSALledEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
+	uEscribirTexto ("Error de ADC... :-(\n\r");
 }
 
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
+	/*__HAL_TIM_DISABLE(&htim3);
+	htim3.State = HAL_TIM_STATE_READY;*/
 	HAL_TIM_Base_Stop(&htim3); // Paramos base de tiempo de muestreo (aunque no es imprescindible)
-	/*
-	HAL_ADCEx_MultiModeStop_DMA (&hadc1);
-	HAL_ADC_Stop (&hadc2);
-    */
+
+	//HAL_ADCEx_MultiModeStop_DMA (&hadc1);
+	//HAL_ADC_Stop (&hadc2);
+
 	Num_Conversiones++;
 	Nueva_Lectura = true;
 	uOSALledEncender ( UOSAL_PIN_LED_VERDE_INCORPORADO );
@@ -253,16 +259,17 @@ void PromediarConDisparo(void)
 
 	// Evalúo si la señal inicia por encima del nivel buscado:
 	// (aplico máscada de ADC1)
-	if ( ( ADC_CONVERTIDO[0]&0xFFFF ) >= NIVEL) bajo = false;
+	if ( ( ADC_CONVERTIDO[PREDESCARTE]&0xFFFF ) >= NIVEL) bajo = false;
 
-	for (int disparo=0; disparo<MUESTRAS; disparo++) {
+	for (int disparo=PREDESCARTE; disparo<MUESTRAS; disparo++) {
 
 		// Supondremos por ahora siempre flanco de subida
-		if ( bajo && ( (ADC_CONVERTIDO[disparo]&0xFFFF) >= NIVEL) ) {
+		if ( bajo && ( (ADC_CONVERTIDO[disparo]&0xFFFF) >= NIVEL ) ) {
 
     		if ( disparo > PREMUESTRAS ) {
     			// No puedo cargar todas las muestras anteriores
     			inicio = disparo - PREMUESTRAS;
+    			inicio = (inicio < PREDESCARTE) ? inicio : PREDESCARTE;
     		}
 
             if ( disparo < PREMUESTRAS ) {
@@ -276,6 +283,8 @@ void PromediarConDisparo(void)
 	    		ADC_CANTIDAD [ PREMUESTRAS + i - disparo] ++;
 	    	}
 	    	disparo = MUESTRAS;
+	    	uEscribirTextoEnteroSS ("Promediada muestra #", Num_Conversiones);
+	    	uEscribirTexto ("\n\r");
 	    }
 
 	    // Esto es por si empezó alto
@@ -310,18 +319,21 @@ void EscribirDatos(uint32_t Actual)
 	uEscribirTextoEnteroSS ("\n\rMaximo ultimo = ", MAXIMO);
 	uEscribirTextoEnteroSS ("\n\rMinimo ultimo = ", MINIMO);
 	uEscribirTexto 		   ("\n\r------------------------------------------------------------------\n\r");
+}
+
+void EscribirPromedio (void)
+{
+	uint16_t P_ADC1, P_ADC2;
+	uint16_t MAXIMO = 0;
+	uint16_t MINIMO = 4095;
 
 	// Escribimos promedio:
 	uEscribirTexto         ("Promedio");
 	uEscribirTexto         ("\n\rADC_1 \tADC_2 \tCantidad\n\r");
 
-	MAXIMO = 0;
-	MINIMO = 4095;
-
-	for (int i=0; i<MUESTRAS; i++) {
+	for (int i=PREDESCARTE; i<MUESTRAS; i++) {
 
 		if (i==PREMUESTRAS) uEscribirTexto ("Disparo...\n\r");
-
 		P_ADC1 = (( ADC_SUMA [i] & 0x0000FFFF )      ) / ADC_CANTIDAD [i];
 		P_ADC2 = (( ADC_SUMA [i] & 0xFFFF0000 ) >> 16) / ADC_CANTIDAD [i];
 
@@ -339,7 +351,6 @@ void EscribirDatos(uint32_t Actual)
 	uEscribirTextoEnteroSS ("\n\rMaximo ultimo = ", MAXIMO);
 	uEscribirTextoEnteroSS ("\n\rMinimo ultimo = ", MINIMO);
 	uEscribirTexto         (" \n\r------------------------------------------------------------\n\r");
-
 }
 
 

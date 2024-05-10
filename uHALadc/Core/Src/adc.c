@@ -26,8 +26,8 @@
 
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
-DMA_HandleTypeDef hdma_adc1;
-DMA_HandleTypeDef hdma_adc2;
+extern DMA_HandleTypeDef admin_dma_adc1;
+extern DMA_HandleTypeDef admin_dma_adc2;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -133,7 +133,7 @@ void MX_ADC2_Init(void)
 
 }
 
-void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
+void gfc_HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 {
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -156,22 +156,22 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 
     /* ADC1 DMA Init */
     /* ADC1 Init */
-    hdma_adc1.Instance = DMA2_Stream0;
-    hdma_adc1.Init.Channel = DMA_CHANNEL_0;
-    hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-    hdma_adc1.Init.Mode = DMA_NORMAL;
-    hdma_adc1.Init.Priority = DMA_PRIORITY_VERY_HIGH;
-    hdma_adc1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&hdma_adc1) != HAL_OK)
+    admin_dma_adc1.Instance = DMA2_Stream0;
+    admin_dma_adc1.Init.Channel = DMA_CHANNEL_0;
+    admin_dma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    admin_dma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
+    admin_dma_adc1.Init.MemInc = DMA_MINC_ENABLE;
+    admin_dma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    admin_dma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    admin_dma_adc1.Init.Mode = DMA_CIRCULAR;
+    admin_dma_adc1.Init.Priority = DMA_PRIORITY_VERY_HIGH;
+    admin_dma_adc1.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&admin_dma_adc1) != HAL_OK)
     {
       Error_Handler();
     }
 
-    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc1);
+    __HAL_LINKDMA(adcHandle,DMA_Handle,admin_dma_adc1);
 
     /* ADC1 interrupt Init */
     HAL_NVIC_SetPriority(ADC_IRQn, 0, 0);
@@ -199,22 +199,22 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 
     /* ADC2 DMA Init */
     /* ADC2 Init */
-    hdma_adc2.Instance = DMA2_Stream2;
-    hdma_adc2.Init.Channel = DMA_CHANNEL_1;
-    hdma_adc2.Init.Direction = DMA_PERIPH_TO_MEMORY;
-    hdma_adc2.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_adc2.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_adc2.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    hdma_adc2.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-    hdma_adc2.Init.Mode = DMA_CIRCULAR;
-    hdma_adc2.Init.Priority = DMA_PRIORITY_HIGH;
-    hdma_adc2.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&hdma_adc2) != HAL_OK)
+    admin_dma_adc2.Instance = DMA2_Stream2;
+    admin_dma_adc2.Init.Channel = DMA_CHANNEL_1;
+    admin_dma_adc2.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    admin_dma_adc2.Init.PeriphInc = DMA_PINC_DISABLE;
+    admin_dma_adc2.Init.MemInc = DMA_MINC_ENABLE;
+    admin_dma_adc2.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    admin_dma_adc2.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    admin_dma_adc2.Init.Mode = DMA_CIRCULAR;
+    admin_dma_adc2.Init.Priority = DMA_PRIORITY_HIGH;
+    admin_dma_adc2.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&admin_dma_adc2) != HAL_OK)
     {
       Error_Handler();
     }
 
-    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc2);
+    __HAL_LINKDMA(adcHandle,DMA_Handle,admin_dma_adc2);
 
     /* ADC2 interrupt Init */
     HAL_NVIC_SetPriority(ADC_IRQn, 0, 0);
@@ -225,7 +225,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
   }
 }
 
-void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
+void gfc_HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 {
 
   if(adcHandle->Instance==ADC1)
