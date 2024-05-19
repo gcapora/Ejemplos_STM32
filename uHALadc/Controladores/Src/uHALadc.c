@@ -203,12 +203,12 @@ bool uHALadcConfigurar ( adc_id_e ID, adc_config_s * CONFIG )
 				canal = UHAL_ADC1_CANAL_2;
 				break;
 			default:
-				uHuboError();
+				uHuboErrorTxt("Canal invalido en Configurar ADC.");
 		}
 		sConfig.Channel = canal;
 		sConfig.Rank = 1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-		if (HAL_ADC_ConfigChannel(&admin_adc1, &sConfig) != HAL_OK) uHuboError();
+		if (HAL_ADC_ConfigChannel(&admin_adc1, &sConfig) != HAL_OK) uHuboErrorTxt("en configuracion de canal de ADC.");
 
 	/*** ¿ADC2 seleccionado? ***----------------------------------------------*/
 	} else if ( UHAL_ADC_2 == ID ) {

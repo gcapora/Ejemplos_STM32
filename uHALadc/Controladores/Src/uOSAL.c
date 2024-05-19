@@ -98,14 +98,31 @@ uint32_t uMicrosegundos (void)
  * @param	Ninguno
  * @retval  Ninguno
  */
-void uHuboError (void)
+void uHuboErrorTxt (char * P_TEXTO)
 {
-	  __disable_irq();
-	  uLedEncender ( UOSAL_PIN_LEDS_INCORPORADOS_TODOS );
-	  while (1)
-	  {
-	  }
+	const uint32_t intervalo=100000;
+	uint32_t delta;
+	uEscribirTxt("ERROR ");
+	uEscribirTxt( P_TEXTO );
+	uEscribirTxt("\n\r");
+	__disable_irq();
+	//uLedApagar ( UOSAL_PIN_LED_VERDE_INCORPORADO );
+	uLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
+	delta = uMicrosegundos();
+	while (1)
+	{
+		if ( (uMicrosegundos()-delta) > intervalo) {
+			delta+=intervalo;
+			uLedInvertir ( UOSAL_PIN_LED_ROJO_INCORPORADO );
+		}
+	}
 }
+
+void uHuboError ( void )
+{
+	uHuboErrorTxt ("");
+}
+
 
 /*-------------------------------------------------------------------------------------------------
  * @brief	Enciende, apaga o invierte el estado de un led incorporado a la placa
@@ -132,7 +149,7 @@ void     uLedInvertir   ( uint16_t PIN )
  * @param	Puntero a texto
  * @retval  Ninguno
  */
-void     uEscribirTexto ( char * P_TEXTO)
+void     uEscribirTxt ( char * P_TEXTO)
 {
 	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO );
 }
@@ -142,7 +159,7 @@ void     uEscribirTexto ( char * P_TEXTO)
  * @param	Puntero a texto y número entero positivo
  * @retval  Ninguno
  */
-void     uEscribirTextoEnteroSS ( char * P_TEXTO, uint32_t ENTEROP)
+void     uEscribirTxtUint ( char * P_TEXTO, uint32_t ENTEROP)
 {
     // Primero texto:
 	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO);
@@ -158,7 +175,7 @@ void     uEscribirTextoEnteroSS ( char * P_TEXTO, uint32_t ENTEROP)
  * @param	Puntero a texto y número entero positivo
  * @retval  Ninguno
  */
-void     uEscribirEnteroSS ( uint32_t ENTEROP)
+void     uEscribirUint ( uint32_t ENTEROP)
 {
     uint8_t Cadena[16] = {0};  // Suficiente para un uint32_t
     sprintf( (char *) Cadena, "%lu", ENTEROP);
@@ -186,20 +203,20 @@ void MICROSEGUNDOS_TEMPO_INICIALIZAR(void)
   htim_microsegundos.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim_microsegundos) != HAL_OK)
   {
-	  uHuboError();
+	  uHuboErrorTxt ("inicialiando tempo microsegundos (HAL_TIM_Base_Init).");
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   if (HAL_TIM_ConfigClockSource(&htim_microsegundos, &sClockSourceConfig) != HAL_OK)
   {
-	  uHuboError();
+	  uHuboErrorTxt ("inicialiando tempo microsegundos (HAL_TIM_ConfigClockSource).");
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim_microsegundos, &sMasterConfig) != HAL_OK)
   {
-	  uHuboError();
+	  uHuboErrorTxt ("inicialiando tempo microsegundos (HAL_TIMEx_...).");
   }
 
   // Iniciamos conteo:

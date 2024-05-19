@@ -66,8 +66,9 @@ typedef struct {
 	// Otra forma podría ser agregar otro puntero uint16_t
 	alineacion_e	Alineacion;
 	uint32_t    	LargoMaximo;   // Cantidad máxima de muestras que tiene el vector apuntado.
-	uint32_t    	Largo;         // La cantidad de muestras utilizadas de ese vector.
-	uint32_t    	Inicio;        // Muestra equivalente a tiempo=0 (puede haber señal antes de ese tiempo).
+	uint32_t    	Largo;         // La cantidad de muestras utilizadas de ese vector. 1 + última muestra válida.
+	uint32_t    	Inicio;        // Primera muestra válida.
+	uint32_t			ReferenciaT0;	// Muestra equivalente a tiempo=0 (puede haber señal antes de ese tiempo).
 	double			FrecuenciaMuestreo;
 
 	senial_tipo 	Tipo;

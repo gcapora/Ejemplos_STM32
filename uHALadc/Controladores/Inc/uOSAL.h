@@ -29,16 +29,17 @@ typedef bool bool_t;   // Esto es una finura... :-)
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool     uOSALinicializar       	( void );
-uint32_t uMilisegundos      		( void );
-uint32_t uMicrosegundos   			( void );
-void     uLedEncender       		( uint16_t );
-void     uLedApagar         		( uint16_t );
-void     uLedInvertir       		( uint16_t );
-void     uEscribirTexto         	( char * );
-void     uEscribirTextoEnteroSS	( char *, uint32_t );
-void     uEscribirEnteroSS      	( uint32_t );
-void     uHuboError             	( void );
+bool     uOSALinicializar     ( void );
+uint32_t uMilisegundos      	( void );
+uint32_t uMicrosegundos   		( void );
+void     uLedEncender       	( uint16_t );
+void     uLedApagar         	( uint16_t );
+void     uLedInvertir       	( uint16_t );
+void     uEscribirTxt         ( char * );
+void     uEscribirTxtUint		( char *, uint32_t );
+void     uEscribirUint      	( uint32_t );
+void     uHuboError           ( void );
+void     uHuboErrorTxt        ( char * );
 
 /*************************************************************************************************/
 #endif /* ISPEL_UOSAL_H_ */

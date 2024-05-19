@@ -39,9 +39,9 @@ double Cuadrada     (double Grados, double CicloDeTrabajo);
 bool ConfigSenialVerificada (senial_s * Senial)
 {
 	// Errores graves
-	if (Senial->Largo > U_MAX_N_MUESTRAS) uHuboError();
-	if (Senial->Largo < 2) uHuboError();
-	if (Senial->Largo > Senial->LargoMaximo) uHuboError();
+	if (Senial->Largo > U_MAX_N_MUESTRAS) uHuboErrorTxt("verificando senial en uSeniales.");
+	if (Senial->Largo < 2) uHuboErrorTxt("verificando senial en uSeniales.");
+	if (Senial->Largo > Senial->LargoMaximo) uHuboErrorTxt("verificando senial en uSeniales.");
 
 	// Correcciones de ciclo y márgenes
 	if (Senial->Simetria > 1)        Senial->Simetria = 1;

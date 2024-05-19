@@ -32,11 +32,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-//const adc_id_e ADC_12 = UHAL_ADC_1;  // Identificador para ADC_1 y ADC_2
 uint32_t ADC_CONVERTIDO [ MUESTRAS ] = {0};
 uint32_t ADC_SUMA       [ MUESTRAS ] = {0};
 uint8_t  ADC_CANTIDAD   [ MUESTRAS ] = {0};
 adc_config_s ADC_CONFIG;
+capturadora_config_s CAPTU_CONFIG;
 
 entrada_config_s CAPTU_1 = {0};
 entrada_config_s CAPTU_2 = {0};
@@ -45,7 +45,7 @@ float    PROMEDIO = 0;
 float    PROMEDIO_TOTAL = 0;
 volatile uint32_t Num_Conversiones = 0;
 bool     Escribimos = false;
-bool     Nueva_Lectura = false;
+uint     TareaNro = 0;
 uint32_t Tiempo_us = 0;
 
 /* Variables importadas -------------------------------------------------------*/
@@ -55,13 +55,13 @@ uint32_t Tiempo_us = 0;
 // extern TIM_HandleTypeDef tempo_dma_s;
 // extern TIM_HandleTypeDef Tempo_admin[UHAL_CANTIDAD_MAP];
 
-/* Private function prototypes -----------------------------------------------*/
+/* Private function prototypes ------------------------------------------------*/
 
 void SystemClock_Config(void);
 void EscribirDatos(uint32_t);
 void PromediarConDisparo(void);
 
-/* Private user code ---------------------------------------------------------*/
+/* Private user code ----------------------------------------------------------*/
 
 /**
   * @brief  The application entry point.
@@ -69,93 +69,79 @@ void PromediarConDisparo(void);
   */
 int main(void)
 {
-  /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration --------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* Configure the system clock */
   SystemClock_Config();
 
-  /* Initialize all configured peripherals */
-  uHALinicializar    ();
-  uHALmapInicializar ( UHAL_MAP_TODOS );
-  uCapturadoraInicializar();
+  /* Inicializa módulos y objetos ---------------------------------------------*/
 
-  //-----------------------------------------------------------------------------
+  uHALinicializar ();
+  uHALmapInicializar ( UHAL_MAP_PE5 );
+  uCapturadoraInicializar ();
 
-  uLedEncender ( UOSAL_PIN_LED_AZUL_INCORPORADO );
+  /*---------------------------------------------------------------------------*/
 
-  uEscribirTexto ("\n\r\n\r");
-  uEscribirTexto ("============================================================\n\r");
-  uEscribirTexto ("ADC dual con DMA (mayo 2024)\n\r");
-  uEscribirTexto ("============================================================\n\r");
+  uEscribirTxt ("\n\r\n\r");
+  uEscribirTxt ("============================================================\n\r");
+  uEscribirTxt ("ADC dual con DMA (mayo 2024)\n\r");
+  uEscribirTxt ("============================================================\n\r");
 
-  uEscribirTextoEnteroSS ("Frecuencia de senial cuadrada = ", (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 100e3 ) / 1000 );
-  uEscribirTexto         (" kHz. \n\r");
+  // Señal cuadrada testigo de 100kHz
+  uEscribirTxtUint	( "Frecuencia de senial cuadrada\t = ",
+		  	  	  	  	  	  (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 100 ) );
+  uEscribirTxt			( " Hz. \n\r");
 
-
-  // Cambiamos frecuencia de muestro (en ADC1)
-  /*ADC_CONFIG.FrecuenciaMuestreo = 1e6;
-  ADC_CONFIG.Canal = U_ADC_CANAL_1;
-  if ( false == uHALadcConfigurar (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();*/
-  //if ( false == uHALadcObtener    (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();
-
-  // Cambiamos canal de ADC2
-  //ADC_CONFIG.Canal = U_ADC_CANAL_1;
-  //if ( false == uHALadcConfigurar (UHAL_ADC_2,&ADC_CONFIG) ) uHuboError();
-
-  // Escribimos resultado
-  if ( false == uHALadcObtener    (UHAL_ADC_1,&ADC_CONFIG) ) uHuboError();
-  uEscribirTextoEnteroSS ("Frecuencia de muestreo        = ", (uint32_t) ADC_CONFIG.FrecuenciaMuestreo / 1000);
-  uEscribirTexto         (" kHz. \n\r");
+  // Capturadora
+  uCapturadoraObtener	( &CAPTU_CONFIG );
+  uEscribirTxtUint		( "Frecuencia de muestreo      \t = ",
+		  	  	  	  	  	  	  (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
+		  	  	  	  	  	  	  // (uint32_t) ((float)U_LARGO_CAPTURA/CAPTU_CONFIG.EscalaHorizontal) );
+  uEscribirTxt         	( " Hz. \n\r");
 
   // Inicio señal cuadrada
   uHALmapEncender ( UHAL_MAP_PE5 );
   Tiempo_us = uMicrosegundos();         	// Leo inicio de conteo en us.
-  do {} while (uMicrosegundos() - Tiempo_us < 1e3 ); // Este retardo sirve para que la señal cuadrada inicie.
+  do {} while (uMicrosegundos() - Tiempo_us < 600e3 ); // Este retardo sirve para que la señal cuadrada inicie.
 
   // Iniciamos captura
-  if ( false == uHALadcComenzarLectura ( UHAL_ADC_1, 			// Lanzamos primer muestreo en ADC 1 y 2
-		                                   ADC_CONVERTIDO,	// Vector donde almaceno lo muestreado
-									              MUESTRAS ) ) { 	// Largo del vector
-	  uLedApagar ( UOSAL_PIN_LED_AZUL_INCORPORADO );
-  }
-  uEscribirTexto ("Muestreando... \n\r");
+  TareaNro = 1;
+  uEscribirTxt ( "Iniciamos captura...\n\r" );
+  uCapturadoraEntradaEncender (ENTRADA_1);
+  uCapturadoraEntradaEncender (ENTRADA_2);
+  uCapturadoraIniciar ();
 
   //-----------------------------------------------------------------------------------------------
   while (1)
   {
 
-	  if ( (uMicrosegundos () - Tiempo_us > 500000) && (Num_Conversiones <  N_CAPTURAS) ) {
-		  // Si pasó medio segundo, muestro qué tengo:
-		  uEscribirTexto ("Sobretiempo... \n\r");
-		  Nueva_Lectura = true;
-		  Num_Conversiones = N_CAPTURAS;
+	  // Verificamos si hay una nueva señal cargada...
+	  if ( uCapturadoraSenialCargada() ){
+		  Tiempo_us = uMicrosegundos() - Tiempo_us;
+
+		  //uEscribirTexto				( "MSJ Senial cargada.\n\r" );
+		  uEscribirTxtUint	( "Frecuencia de muestreo = ",
+				  	  	  	  	  	  (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
+		  uEscribirTxt      	( " Hz. \n\r");
+		  uEscribirTxtUint	( "Tardamos ", Tiempo_us );
+		  uEscribirTxt 		( " us. \n\r");
+
+		  Tiempo_us = uMicrosegundos();
+		  TareaNro++;
 	  }
 
-	  if (Nueva_Lectura ) {
-		  Nueva_Lectura = false;
-
-		  // Promediamos muestra a muestra
-		  PromediarConDisparo();
-
-		  // ¿Lanzamos nuevo muestreo?
-		  if ( Num_Conversiones <  N_CAPTURAS ) {
-			  uHALadcComenzarLectura ( UHAL_ADC_1, ADC_CONVERTIDO, MUESTRAS );
-		  }
-
-		  // ¿Terminamos muestreo?
-		  if ( Num_Conversiones == N_CAPTURAS ) {
-			  Tiempo_us = uMicrosegundos() - Tiempo_us;
-			  EscribirDatos (Num_Conversiones);
-			  uEscribirTextoEnteroSS ("Tardamos ", Tiempo_us);
-			  uEscribirTexto (" us. \n\r");
-			  uLedApagar ( UOSAL_PIN_LED_AZUL_INCORPORADO );
-
-
-		  }
+	  // Pedimos una nueva captura luego de un tiempo...
+	  if (uMicrosegundos () - Tiempo_us > 2e6 && 2==TareaNro)  {
+		  Tiempo_us = uMicrosegundos();
+		  uEscribirTxt("2da captura.\n\r");
+		  uCapturadoraObtener ( &CAPTU_CONFIG );
+		  CAPTU_CONFIG.EscalaHorizontal = 1.0/50;
+		  CAPTU_CONFIG.ModoCaptura      = CAPTURA_PROMEDIADA_4;
+		  CAPTU_CONFIG.OrigenDisparo    = ENTRADA_2;
+		  uCapturadoraConfigurar ( &CAPTU_CONFIG );
+		  uCapturadoraIniciar ();
 	  }
+
   } // -----> fin de loop
 }	 // -----> fin de main
 
@@ -207,13 +193,12 @@ void SystemClock_Config(void)
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
 	uLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
-	uEscribirTexto ("Error con ADC...\n\r");
+	uEscribirTxt ("Error con ADC...\n\r");
 }
 
-void uHALadcLecturaCompletada ( adc_id_e ID )
+void _uHALadcLecturaCompletada ( adc_id_e ID )
 {
 	Num_Conversiones++;
-	Nueva_Lectura = true;
 	uLedEncender ( UOSAL_PIN_LED_VERDE_INCORPORADO );
 }
 
@@ -264,55 +249,55 @@ void EscribirDatos(uint32_t Actual)
 	uint16_t MINIMO = 4095;
 
 	// Escribimos última muestra:
-	uEscribirTextoEnteroSS ("Lectura # ", Actual);
-	uEscribirTexto         ("\n\rADC_1 \tADC_2\n\r");
+	uEscribirTxtUint ("Lectura # ", Actual);
+	uEscribirTxt         ("\n\rADC_1 \tADC_2\n\r");
 
 	for (int i=0; i<MUESTRAS; i++) {
 
 		P_ADC1 = ( ADC_CONVERTIDO [i] & 0x0000FFFF )      ;
 		P_ADC2 = ( ADC_CONVERTIDO [i] & 0xFFFF0000 ) >> 16;
 
-		uEscribirEnteroSS ( P_ADC1 );   // Dato de ADC1
-		uEscribirTexto 	  ( ";\t");     // Tabulación
-		uEscribirEnteroSS ( P_ADC2 );   // Dato ADC2
-		uEscribirTexto    ("\n\r");
+		uEscribirUint ( P_ADC1 );   // Dato de ADC1
+		uEscribirTxt 	  ( ";\t");     // Tabulación
+		uEscribirUint ( P_ADC2 );   // Dato ADC2
+		uEscribirTxt    ("\n\r");
 
 		MAXIMO = P_ADC1 > MAXIMO ? P_ADC1 : MAXIMO;
 		MINIMO = P_ADC1 < MINIMO ? P_ADC1 : MINIMO;
 
 	}
-	uEscribirTextoEnteroSS ("\n\rMaximo ultimo = ", MAXIMO);
-	uEscribirTextoEnteroSS ("\n\rMinimo ultimo = ", MINIMO);
-	uEscribirTexto 		   ("\n\r------------------------------------------------------------------\n\r");
+	uEscribirTxtUint ("\n\rMaximo ultimo = ", MAXIMO);
+	uEscribirTxtUint ("\n\rMinimo ultimo = ", MINIMO);
+	uEscribirTxt 		   ("\n\r------------------------------------------------------------------\n\r");
 
 	// Escribimos promedio:
-	uEscribirTexto         ("Promedio");
-	uEscribirTexto         ("\n\rADC_1 \tADC_2 \tCantidad\n\r");
+	uEscribirTxt         ("Promedio");
+	uEscribirTxt         ("\n\rADC_1 \tADC_2 \tCantidad\n\r");
 
 	MAXIMO = 0;
 	MINIMO = 4095;
 
 	for (int i=0; i<MUESTRAS; i++) {
 
-		if (i==PREMUESTRAS) uEscribirTexto ("Disparo...\n\r");
+		if (i==PREMUESTRAS) uEscribirTxt ("Disparo...\n\r");
 
 		P_ADC1 = (( ADC_SUMA [i] & 0x0000FFFF )      ) / ADC_CANTIDAD [i];
 		P_ADC2 = (( ADC_SUMA [i] & 0xFFFF0000 ) >> 16) / ADC_CANTIDAD [i];
 
-		uEscribirEnteroSS ( P_ADC1 );
-		uEscribirTexto 	  ( ";\t");
-		uEscribirEnteroSS ( P_ADC2 );
-		uEscribirTexto 	  ( ";\t");
-		uEscribirEnteroSS ( ADC_CANTIDAD [i] );
-		uEscribirTexto    ( "\n\r");
+		uEscribirUint ( P_ADC1 );
+		uEscribirTxt 	  ( ";\t");
+		uEscribirUint ( P_ADC2 );
+		uEscribirTxt 	  ( ";\t");
+		uEscribirUint ( ADC_CANTIDAD [i] );
+		uEscribirTxt    ( "\n\r");
 
 		MAXIMO = P_ADC1 > MAXIMO ? P_ADC1 : MAXIMO;
 		MINIMO = P_ADC1 < MINIMO ? P_ADC1 : MINIMO;
 
 	}
-	uEscribirTextoEnteroSS ("\n\rMaximo ultimo = ", MAXIMO);
-	uEscribirTextoEnteroSS ("\n\rMinimo ultimo = ", MINIMO);
-	uEscribirTexto         (" \n\r------------------------------------------------------------\n\r");
+	uEscribirTxtUint ("\n\rMaximo ultimo = ", MAXIMO);
+	uEscribirTxtUint ("\n\rMinimo ultimo = ", MINIMO);
+	uEscribirTxt         (" \n\r------------------------------------------------------------\n\r");
 
 }
 
