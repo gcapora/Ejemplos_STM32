@@ -11,6 +11,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "math.h"
 #include "uOSAL.h"
 #include "uHAL.h"
 #include "uCapturadora.h"
@@ -37,9 +38,8 @@ uint32_t ADC_SUMA       [ MUESTRAS ] = {0};
 uint8_t  ADC_CANTIDAD   [ MUESTRAS ] = {0};
 adc_config_s ADC_CONFIG;
 capturadora_config_s CAPTU_CONFIG;
-
-entrada_config_s CAPTU_1 = {0};
-entrada_config_s CAPTU_2 = {0};
+entrada_config_s     CAPTU_1 = {0};
+entrada_config_s     CAPTU_2 = {0};
 
 float    PROMEDIO = 0;
 float    PROMEDIO_TOTAL = 0;
@@ -104,6 +104,12 @@ int main(void)
   Tiempo_us = uMicrosegundos();         	// Leo inicio de conteo en us.
   do {} while (uMicrosegundos() - Tiempo_us < 600e3 ); // Este retardo sirve para que la señal cuadrada inicie.
 
+  // Configuramos entrada 2:
+  uCapturadoraEntradaObtener ( ENTRADA_2, &CAPTU_2 );
+  CAPTU_2.EscalaVertical = 3.0;
+  CAPTU_2.NivelDisparo = 1.0;
+  uCapturadoraEntradaConfigurar ( ENTRADA_2, &CAPTU_2 );
+
   // Iniciamos captura
   TareaNro = 1;
   uEscribirTxt ( "Iniciamos captura...\n\r" );
@@ -135,7 +141,7 @@ int main(void)
 		  Tiempo_us = uMicrosegundos();
 		  uEscribirTxt("2da captura.\n\r");
 		  uCapturadoraObtener ( &CAPTU_CONFIG );
-		  CAPTU_CONFIG.EscalaHorizontal = 1.0/50;
+		  CAPTU_CONFIG.EscalaHorizontal = 1.0/5000;
 		  CAPTU_CONFIG.ModoCaptura      = CAPTURA_PROMEDIADA_4;
 		  CAPTU_CONFIG.OrigenDisparo    = ENTRADA_2;
 		  uCapturadoraConfigurar ( &CAPTU_CONFIG );

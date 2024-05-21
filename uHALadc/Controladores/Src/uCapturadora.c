@@ -15,12 +15,14 @@
 #ifndef U_LARGO_CAPTURA
 #define U_LARGO_CAPTURA				50
 #endif
-#define U_MUESTRAS_PRE_DISPARO	((uint32_t)( U_LARGO_CAPTURA / 2 ))	// Muestras que guarda previo al disparo (trigger)
+#define U_MUESTRAS_PRE_DISPARO	((uint32_t)( U_LARGO_CAPTURA / 2 ))	  // Muestras que guarda previo al disparo (trigger)
 #define U_MUESTRAS_POS_DISPARO	((uint32_t)( U_LARGO_CAPTURA - U_MUESTRAS_PRE_DISPARO ))
-#define U_MUESTRAS_DESCARTADAS	10 // Muestras iniciales que dan valores erróneos
-#define U_SOBREMUESTREO          ((uint32_t)( U_LARGO_CAPTURA )) /// 2 )) // Un 50% de sobremuestreo
+#define U_MUESTRAS_DESCARTADAS	10                                    // Muestras iniciales que dan valores erróneos
+#define U_SOBREMUESTREO          ((uint32_t)( U_LARGO_CAPTURA ))       // Un 100% de sobremuestreo
 #define U_LARGO_CAPTURA_INICIAL  ((uint32_t)( U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA + U_SOBREMUESTREO ))
 #define U_ESCALA_HORIZONTAL_MINIMA	((double) U_LARGO_CAPTURA / 2.4e6) // 2.4e6 es lo máximo que admite la placa
+#define U_TIEMPO_CAPTURA_MAXIMO	((uint32_t) 500)                       // [ms] Pasado este tiempo, envío lo que tenga.
+																								// Además de este tiempo, se tarda en procesar y enviar.
 
 /****** Definiciones privadas de tipos de datos (public typedef) *********************************/
 
@@ -48,11 +50,21 @@ typedef struct {
 typedef struct {
 	capturadora_config_s				Config;
 	double								FrecuenciaMuestreo;
-	uint16_t								NivelDisparo; // Debe traducir el nivel desde fuente
-	uint16_t								Histeresis;
+	uint16_t								NivelDisparo;	// Debe traducir el nivel desde fuente
+	uint16_t								Histeresis;		// Se configura en u...Inicializar y no varía por el momento
+	flanco_e 							FlancoDisparo;
 	uint8_t								CapturasRestantes;
+	uint32_t								TiempoInicio;	// [ms] Tiempo inicial de la captura
 	capturadora_estado_e				Estado;
 } capturadora_admin_s;
+
+typedef enum {
+	ESCALA_VERTICAL_1,
+	ESCALA_VERTICAL_2,
+	ESCALA_VERTICAL_MAXIMA = ESCALA_VERTICAL_2,
+	ESCALAS_VERTICALES_CANTIDAD,
+	ESCALA_VERTICAL_DESBORDADA
+} escala_vertical_e;
 
 /****** Definición de datos privados **********************************************************/
 
@@ -62,14 +74,16 @@ static senial_s				SenialAdmin  [U_ENTRADAS_CANTIDAD] = {0};
 static uint32_t 				MuestrasCapturadas12 [U_LARGO_CAPTURA_INICIAL] = {0};
 static uint32_t 				MuestrasProcesadas12 [U_LARGO_CAPTURA] = {0};
 static uint8_t					CantidadProcesadas12 [U_LARGO_CAPTURA] = {0};
-volatile bool LecturaCompletada = false;
+volatile	bool	LecturaCompletada = false;
+const float		EscalasVerticales [ESCALAS_VERTICALES_CANTIDAD] = {3.3, 6.6};
 
 /****** Declaración de funciones privadas ********************************************************/
 
-bool SumarSenial (void);
-void ProcesarSenial (void);
-void ImprimirSenial32 (void);
-bool ValidarOrigenDisparo ( entrada_id_e * );
+bool		SumarSenial (void);
+void 		ProcesarSenial (void);
+void 		ImprimirSenial32 (void);
+bool		ValidarOrigenDisparo ( entrada_id_e * );
+uint8_t	CapturasObjetivo ( void );
 
 /****** Definición de funciones públicas ********************************************************/
 
@@ -86,7 +100,6 @@ bool uCapturadoraInicializar 			( void )
 
 	// Valores predeterminados de Capturadora
 	Capturadora.Config.EscalaHorizontal = 25e-6;
-	Capturadora.Config.EsperaDisparo = 500;
 	Capturadora.Config.ModoCaptura = CAPTURA_UNICA | CAPTURA_PROMEDIADA_16;
 	Capturadora.Config.OrigenDisparo = ENTRADA_1;
 	Capturadora.FrecuenciaMuestreo = U_LARGO_CAPTURA / Capturadora.Config.EscalaHorizontal;
@@ -95,8 +108,8 @@ bool uCapturadoraInicializar 			( void )
 	Capturadora.CapturasRestantes = 0;
 
 	// Valores predeterminados Entrada 1 (ADC 1 con dos canales)
-	EntradaAdmin [ENTRADA_1].Config.EscalaVertical = 3.3;
-	EntradaAdmin [ENTRADA_1].Config.NivelDisparo   = 1.5;
+	EntradaAdmin [ENTRADA_1].Config.EscalaVertical = EscalasVerticales [ESCALA_VERTICAL_2];
+	EntradaAdmin [ENTRADA_1].Config.NivelDisparo   = EscalasVerticales [ESCALA_VERTICAL_2]/2;
 	EntradaAdmin [ENTRADA_1].Config.FlancoDisparo  = SUBIDA;
 	EntradaAdmin [ENTRADA_1].Estado = ENTRADA_APAGADA;
 	SenialAdmin [ENTRADA_1].Muestras_p   = MuestrasProcesadas12;
@@ -114,8 +127,8 @@ bool uCapturadoraInicializar 			( void )
 	Capturadora.FrecuenciaMuestreo = ConfigADC.FrecuenciaMuestreo;  // Puede que haya modificado la frecuencia.
 
 	// Valores predeterminados Entrada 2
-	EntradaAdmin [ENTRADA_2].Config.EscalaVertical = 3.3;
-	EntradaAdmin [ENTRADA_2].Config.NivelDisparo   = 1.5;
+	EntradaAdmin [ENTRADA_2].Config.EscalaVertical = EscalasVerticales [ESCALA_VERTICAL_2];
+	EntradaAdmin [ENTRADA_2].Config.NivelDisparo   = EscalasVerticales [ESCALA_VERTICAL_2]/2;
 	EntradaAdmin [ENTRADA_2].Config.FlancoDisparo  = SUBIDA;
 	EntradaAdmin [ENTRADA_2].Estado = ENTRADA_APAGADA;
    SenialAdmin [ENTRADA_2].Muestras_p   = MuestrasProcesadas12;
@@ -176,7 +189,6 @@ bool uCapturadoraConfigurar ( capturadora_config_s * CONFIG)
 bool uCapturadoraObtener ( capturadora_config_s * CONFIG)
 {
 	CONFIG->EscalaHorizontal = Capturadora.Config.EscalaHorizontal;
-	CONFIG->EsperaDisparo    = Capturadora.Config.EsperaDisparo;
 	CONFIG->ModoCaptura      = Capturadora.Config.ModoCaptura;
 	CONFIG->OrigenDisparo    = Capturadora.Config.OrigenDisparo;
 	return true;
@@ -187,28 +199,61 @@ double uCapturadoraLeerFrecuenciaMuestreo ( void )
 	return Capturadora.FrecuenciaMuestreo;
 }
 
-bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * CONFIG, senial_s * PSENIAL )
+bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * PCONFIG )
 {
 	// Variables locales
 	bool control = false;
 
-	// Verificación de parámetros
-	if ( U_ENTRADAS_CANTIDAD < ID && ENTRADAS_TODAS!=ID) return false;
-	//debemos verificar tiempo mínimo que podemos muestrear...
+	// Verificación de parámetros y recursividad
+	if ( ENTRADAS_TODAS==ID ) {
+		if (uCapturadoraEntradaConfigurar ( ENTRADA_1, PCONFIG )) control = true;
+		if (uCapturadoraEntradaConfigurar ( ENTRADA_2, PCONFIG )) control = true;
+		return control;
+	}
+	if ( U_ENTRADAS_CANTIDAD < ID ) return false;
 
 	// Configuramos...
-	// ----------- ¿Debo configurar CANAL 1? -----------------------------------
-	if ( ENTRADA_1==ID || ENTRADAS_TODAS==ID ) {
-		// Canal [ID]
-		control = true;
-	}
+	EntradaAdmin[ID].Config.EscalaVertical  = uCapturadoraEscalaVertical(PCONFIG->EscalaVertical);
+	EntradaAdmin[ID].Config.NivelDisparo    = PCONFIG->NivelDisparo;
+	if ( EntradaAdmin[ID].Config.NivelDisparo > EntradaAdmin[ID].Config.EscalaVertical )
+		EntradaAdmin[ID].Config.NivelDisparo = EntradaAdmin[ID].Config.EscalaVertical;
+	if ( EntradaAdmin[ID].Config.NivelDisparo < 0 )
+		EntradaAdmin[ID].Config.NivelDisparo = 0;  // TODO corregir con escala inferior negativa
+	EntradaAdmin[ID].Config.FlancoDisparo   = PCONFIG->FlancoDisparo;
+	EntradaAdmin[ID].Config.Encendida       = PCONFIG->Encendida;
 
+	// Copiamos configuración establecida y salimos:
+	control = uCapturadoraEntradaObtener( ID, PCONFIG);
 	return control;
 }
 
-bool uCapturadoraEntradaObtener ( entrada_id_e ID, entrada_config_s * PCONFIG, senial_s * PSENIAL)
+bool uCapturadoraEntradaObtener ( entrada_id_e ID, entrada_config_s * PCONFIG)
 {
+	PCONFIG->EscalaVertical	= EntradaAdmin[ID].Config.EscalaVertical;
+	PCONFIG->NivelDisparo	= EntradaAdmin[ID].Config.NivelDisparo;
+	PCONFIG->FlancoDisparo	= EntradaAdmin[ID].Config.FlancoDisparo;
+	PCONFIG->Encendida		= EntradaAdmin[ID].Config.Encendida;
 	return true;
+}
+
+bool uCapturadoraSenialObtener ( entrada_id_e ID,  senial_s * PSENIAL)
+{
+	if ( NULL==PSENIAL ) {
+		PSENIAL = &SenialAdmin[ID];
+		return true;
+	}
+	return false;
+}
+
+float  uCapturadoraEscalaVertical	( float VOLTIOS )
+{
+	escala_vertical_e i=ESCALA_VERTICAL_1;
+	float retorno = EscalasVerticales[i];
+	while ( (retorno<VOLTIOS) && (i<ESCALA_VERTICAL_MAXIMA) ) {
+		i++;
+		retorno = EscalasVerticales[i];
+	}
+	return retorno;
 }
 
 bool uCapturadoraEntradaEncender	( entrada_id_e ID )
@@ -243,16 +288,17 @@ bool uCapturadoraEntradaApagar ( entrada_id_e ID )
 
 bool uCapturadoraIniciar ( void )
 {
-	bool control = false;
-	uint32_t i;
-	//adc_config_s ConfigADC = {0};
+	/* Variables locales */
+	bool 				control = false;
+	entrada_id_e	OrigenDisparo = Capturadora.Config.OrigenDisparo;
+	uint32_t 		i;
 
 	/* Precondiciones */
 	if ( CAPTURADORA_INACTIVA != Capturadora.Estado ) {
 		return false;
 	}
-	if ( Capturadora.Config.OrigenDisparo <= ENTRADA_2                             &&
-		  EntradaAdmin[Capturadora.Config.OrigenDisparo].Estado == ENTRADA_ENCENDIDA ) {
+	if ( OrigenDisparo <= ENTRADA_2                            &&
+		EntradaAdmin[OrigenDisparo].Estado == ENTRADA_ENCENDIDA    ) {
 		control = true;
 	} else if ( EntradaAdmin[ENTRADA_1].Estado == ENTRADA_ENCENDIDA ||
 			      EntradaAdmin[ENTRADA_2].Estado == ENTRADA_ENCENDIDA  ) {
@@ -261,15 +307,17 @@ bool uCapturadoraIniciar ( void )
 	if (false==control) return control;
 
 	/* Configuramos parámetros y lanzamos muestreo */
-	Capturadora.CapturasRestantes = 1; // Si no se promedia queda este valor.
-	if ( Capturadora.Config.ModoCaptura & CAPTURA_PROMEDIADA_4 )  Capturadora.CapturasRestantes = 4;
-	if ( Capturadora.Config.ModoCaptura & CAPTURA_PROMEDIADA_16 ) Capturadora.CapturasRestantes = 16;
-	if ( Capturadora.Config.OrigenDisparo == MODO_ASINCRONICO )   Capturadora.CapturasRestantes = 1;
+	if ( OrigenDisparo <= ENTRADA_2 ) {
+		Capturadora.NivelDisparo  = EntradaAdmin[OrigenDisparo].Config.NivelDisparo   /
+											 EntradaAdmin[OrigenDisparo].Config.EscalaVertical *
+											 MAXIMO_12B;
+		Capturadora.FlancoDisparo = EntradaAdmin[OrigenDisparo].Config.FlancoDisparo;
+	}
+	Capturadora.CapturasRestantes = CapturasObjetivo();
 	for (i=0; i<U_LARGO_CAPTURA; i++) {
 		MuestrasProcesadas12 [i] = 0;
 		CantidadProcesadas12 [i] = 0;
 	}
-
 	if ( true == control ) {
 		control = uHALadcComenzarLectura (	UHAL_ADC_1,						// Lanza muestreo en ADC 1 y 2
 														MuestrasCapturadas12,		// Vector donde almaceno lo muestreado
@@ -278,6 +326,7 @@ bool uCapturadoraIniciar ( void )
 	}
 
 	// Actualizamos estado general y salimos
+	Capturadora.TiempoInicio = uMilisegundos();
 	Capturadora.Estado = CAPTURADORA_CAPTURANDO;
 	return control;
 }
@@ -306,9 +355,20 @@ bool uCapturadoraParar ( void )
 	return control;
 }
 
+/**------------------------------------------------------------------------------------------------
+  * @brief	Verifica tareas pendientes de Capturadora y actua.
+  * @param	Ninguno
+  * @retval	true si está en estado CAPTURADORA_CAPTURANDO.
+  * 			Si no está en ese estado, no hay nada para actualizar.
+  */
 bool uCapturadoraActualizar ( void)
-// Verifica tareas pendientes y actua.
 {
+	uint32_t Delta, i;
+
+	// Precondiciones
+	if ( Capturadora.Estado != CAPTURADORA_CAPTURANDO ) return false;
+
+	// Actualizamos
 	if (true == LecturaCompletada) {
 		LecturaCompletada = false;
 
@@ -326,17 +386,29 @@ bool uCapturadoraActualizar ( void)
 		}
 
 		// Analizamos si volvemos a capturar o procesamos
-		if (Capturadora.CapturasRestantes > 0) {
+		Delta = uMilisegundos() - Capturadora.TiempoInicio;
+		if ( (Capturadora.CapturasRestantes>0) &&
+			  (Delta<U_TIEMPO_CAPTURA_MAXIMO)    ) {
 			// Iniciamos una nueva captura para sumar al promedio:
 			uHALadcComenzarLectura (	UHAL_ADC_1,						// Lanza muestreo en ADC 1 y 2
 												MuestrasCapturadas12,		// Vector donde almaceno lo muestreado
 												U_LARGO_CAPTURA_INICIAL );	// Largo del vector
 			Capturadora.Estado = CAPTURADORA_CAPTURANDO;
 		} else {
+			// Cortamos capturas y proceso resultado
+			if ( Capturadora.CapturasRestantes == CapturasObjetivo()) {
+				// No pudimos hacer ninguna captura sincronizada.
+				// Cargamos lo que hay antes de procesar.
+				for ( i=U_MUESTRAS_DESCARTADAS; i<U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA; i++) {
+					MuestrasProcesadas12 [i-U_MUESTRAS_DESCARTADAS] = MuestrasCapturadas12[i];
+					CantidadProcesadas12 [i-U_MUESTRAS_DESCARTADAS] = 1;
+				}
+			}
 			// Procesamos lo que hay:
 			uEscribirTxt("Procesando...\n\r");
 			ProcesarSenial();
-			if ( MODO_ASINCRONICO == Capturadora.Config.OrigenDisparo ) {
+			if ( ORIGEN_ASINCRONICO == Capturadora.Config.OrigenDisparo ||
+				  Capturadora.CapturasRestantes == CapturasObjetivo()     ) {
 				SenialAdmin[ENTRADA_1].ReferenciaT0 = 0;
 				SenialAdmin[ENTRADA_2].ReferenciaT0 = 0;
 			} else if ( ENTRADA_2 >= Capturadora.Config.OrigenDisparo ) {
@@ -377,7 +449,7 @@ bool SumarSenial(void)
 {
 	/* Variables locales */
 	bool Control = false;
-	bool Bajo = true;
+	bool EstadoPrevio = false;
 	uint32_t Disparo, i, j;
 	uint32_t Mascara  = 0;
 	uint8_t  Desplaza = 0;
@@ -391,12 +463,12 @@ bool SumarSenial(void)
 	if ( CAPTURADORA_PROCESANDO != Capturadora.Estado ) return false;
 	if ( LimiteSuperior           > MAXIMO_12B )                            LimiteSuperior = MAXIMO_12B;
 	if ( Capturadora.NivelDisparo < (Capturadora.Histeresis + MINIMO_12B) ) LimiteInferior = MINIMO_12B;
-	if ( Origen > ENTRADA_2 && Origen !=MODO_ASINCRONICO) {
+	if ( Origen > ENTRADA_2 && Origen !=ORIGEN_ASINCRONICO) {
 		uHuboErrorTxt (" Origen invalido en SumarSenial de uCapturadora."); // TODO preparar este código para que procese modo alternado
 	}
 
 	/* Suma de señal capturada */
-	if ( MODO_ASINCRONICO == Origen ) {
+	if ( ORIGEN_ASINCRONICO == Origen ) {
 		// No hay nada para sincronizar y copio directamente:
 		Inicio = U_MUESTRAS_DESCARTADAS;
 		Final  = U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA;
@@ -418,14 +490,14 @@ bool SumarSenial(void)
 	}
 
 	// Evalúo si la señal inicia por debajo del nivel buscado:
-	Bajo = ( (MuestrasCapturadas12[U_MUESTRAS_DESCARTADAS]&Mascara)>>Desplaza <= LimiteInferior );
+	EstadoPrevio = ( (MuestrasCapturadas12[U_MUESTRAS_DESCARTADAS]&Mascara)>>Desplaza <= LimiteInferior );
 
 	// Evalúo muestra la muestra...
 	//for ( Disparo=U_MUESTRAS_DESCARTADAS; Disparo<U_LARGO_CAPTURA_INICIAL; Disparo++) {
 	for ( Disparo=U_MUESTRAS_DESCARTADAS; Disparo<(U_MUESTRAS_DESCARTADAS+U_LARGO_CAPTURA); Disparo++) {
 
 		// Supondremos por ahora siempre flanco de subida
-		if ( ( true == Bajo )                                                      &&
+		if ( ( true == EstadoPrevio )                                                      &&
 			  ( Disparo >= (U_MUESTRAS_DESCARTADAS + U_MUESTRAS_PRE_DISPARO) )      &&
 			  ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior) ) {
 	    	// Hubo disparo!!! -------------------------------------------------------------------------------------------
@@ -458,8 +530,8 @@ bool SumarSenial(void)
 	    }
 
 	    // Actualizar Bajo antes del tiempo de Disparo
-	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza <= LimiteInferior ) Bajo = true;
-	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior ) Bajo = false;
+	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza <= LimiteInferior ) EstadoPrevio = true;
+	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior ) EstadoPrevio = false;
 	}
 	return Control;
 }
@@ -519,9 +591,18 @@ bool ValidarOrigenDisparo ( entrada_id_e * P_ORIGEN )
 {
 	if ( *P_ORIGEN == ENTRADA_1 ) return true;
 	if ( *P_ORIGEN == ENTRADA_2 ) return true;
-	if ( *P_ORIGEN == MODO_ASINCRONICO ) return true;
+	if ( *P_ORIGEN == ORIGEN_ASINCRONICO ) return true;
 	*P_ORIGEN = ENTRADA_1;
 	return false;
+}
+
+uint8_t CapturasObjetivo ( void )
+{
+	uint8_t Retorno=1;
+	if ( Capturadora.Config.ModoCaptura & CAPTURA_PROMEDIADA_4 )  Retorno = 4;
+	if ( Capturadora.Config.ModoCaptura & CAPTURA_PROMEDIADA_16 ) Retorno = 16;
+	if ( Capturadora.Config.OrigenDisparo == ORIGEN_ASINCRONICO )   Retorno = 1;
+	return Retorno;
 }
 
 /****************************************************************** FIN DE ARCHIVO ***************/

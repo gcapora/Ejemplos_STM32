@@ -19,7 +19,7 @@
 
 #define U_ENTRADAS_CANTIDAD       				2
 #define U_NUM_MAX_CAPTURAS_PROMEDIAR			16
-#define U_LARGO_CAPTURA								2000	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
+#define U_LARGO_CAPTURA								200	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
 
 #define CAPTURA_UNICA								0b00000001
 #define CAPTURA_CONTINUA							0b00000010  // Sin habilitar por ahora
@@ -36,8 +36,8 @@ typedef enum {
 	ENTRADA_1,
 	ENTRADA_2,
 	ENTRADAS_TODAS,
-	MODO_ALTERNADO = ENTRADAS_TODAS,
-	MODO_ASINCRONICO
+	ORIGEN_ALTERNADO = ENTRADAS_TODAS,
+	ORIGEN_ASINCRONICO
 } entrada_id_e;
 
 typedef enum {
@@ -51,17 +51,14 @@ typedef struct {
 														//      Este valor determina la frecuencia de muestreo
 	entrada_id_e			OrigenDisparo;		//      Incluye Origen Modo Alternado y Modo Asincronico
 	uint8_t					ModoCaptura;		//      Ver Definiciones públicas (macros)
-	uint16_t 				EsperaDisparo;		// [ms] Tiempo máximo de espera del disparo
 } capturadora_config_s;
 
 typedef struct {
-	float		  	  			EscalaVertical;	// [V]  Máxima tensión positiva
-														//      Determina si la escala queda en 4 V o 12 V.
+	float		  	  			EscalaVertical;	// [V]  Máxima tensión positiva, que se adecuará a escalas disponibles
 	float	   				NivelDisparo;
 	flanco_e 				FlancoDisparo;
 	//senial_s * 				Senial;			   // Donde almaceno mi señal.
 	bool						Encendida;
-	//entrada_estado_e		Estado;
 } entrada_config_s;
 
 /****** Declaraciones de datos externos **********************************************************/
@@ -74,11 +71,12 @@ bool   uCapturadoraConfigurar			( capturadora_config_s * );	// Configuración de
 bool   uCapturadoraObtener				( capturadora_config_s * );
 double uCapturadoraLeerFrecuenciaMuestreo ( void );
 bool   uCapturadoraEntradaConfigurar( entrada_id_e,					// Configuración de un canal.
-												  entrada_config_s *,
-												  senial_s * );					// Aquí debo recibir la señal);
+												  entrada_config_s * );
 bool   uCapturadoraEntradaObtener	( entrada_id_e,
-											  	  entrada_config_s *,
-												  senial_s * );					// Aquí debo recibir la señal
+											  	  entrada_config_s * );
+bool   uCapturadoraSenialObtener    ( entrada_id_e,
+											  	  senial_s * );
+float  uCapturadoraEscalaVertical	( float );
 bool   uCapturadoraEntradaEncender	( entrada_id_e );					// Encendido y apagado de un canal.
 bool   uCapturadoraEntradaApagar		( entrada_id_e );
 bool   uCapturadoraIniciar				( void );							// Para que el inicio sea exitoso
