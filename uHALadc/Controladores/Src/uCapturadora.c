@@ -1,10 +1,10 @@
 /**************************************************************************************************
- * Archivo: uCapturadora.c
- * Breve:
- * Fecha:
- * Autor:	Guillermo F. Caporaletti
- *
- *************************************************************************************************/
+* Archivo: uCapturadora.c
+* Breve:
+* Fecha:
+* Autor:	Guillermo F. Caporaletti
+*
+**************************************************************************************************/
 
 /****** Librerías (includes) *********************************************************************/
 
@@ -13,15 +13,15 @@
 /****** Definiciones privadas (macros) ***********************************************************/
 
 #ifndef U_LARGO_CAPTURA
-#define U_LARGO_CAPTURA				50
+#define U_LARGO_CAPTURA				100
 #endif
-#define U_MUESTRAS_PRE_DISPARO	((uint32_t)( U_LARGO_CAPTURA / 2 ))	  // Muestras que guarda previo al disparo (trigger)
-#define U_MUESTRAS_POS_DISPARO	((uint32_t)( U_LARGO_CAPTURA - U_MUESTRAS_PRE_DISPARO ))
-#define U_MUESTRAS_DESCARTADAS	10                                    // Muestras iniciales que dan valores erróneos
-#define U_SOBREMUESTREO          ((uint32_t)( U_LARGO_CAPTURA ))       // Un 100% de sobremuestreo
-#define U_LARGO_CAPTURA_INICIAL  ((uint32_t)( U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA + U_SOBREMUESTREO ))
-#define U_ESCALA_HORIZONTAL_MINIMA	((double) U_LARGO_CAPTURA / 2.4e6) // 2.4e6 es lo máximo que admite la placa
-#define U_TIEMPO_CAPTURA_MAXIMO	((uint32_t) 500)                       // [ms] Pasado este tiempo, envío lo que tenga.
+#define U_MUESTRAS_PRE_DISPARO		((uint32_t)( U_LARGO_CAPTURA / 4 ))	// Muestras que guarda previo al disparo (trigger)
+#define U_MUESTRAS_POS_DISPARO		((uint32_t)( U_LARGO_CAPTURA - U_MUESTRAS_PRE_DISPARO ))
+#define U_MUESTRAS_DESCARTADAS		10                                	// Muestras iniciales que dan valores erróneos
+#define U_SOBREMUESTREO          	((uint32_t)( U_LARGO_CAPTURA ))
+#define U_LARGO_CAPTURA_INICIAL 	 	((uint32_t)( U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA + U_SOBREMUESTREO ))
+#define U_ESCALA_HORIZONTAL_MINIMA	((double) U_LARGO_CAPTURA / 2.4e6)	// 2.4e6 es lo máximo que admite la placa
+#define U_TIEMPO_CAPTURA_MAXIMO		((uint32_t) 2000)                   // [ms] Pasado este tiempo, envío lo que tenga.
 																								// Además de este tiempo, se tarda en procesar y enviar.
 
 /****** Definiciones privadas de tipos de datos (public typedef) *********************************/
@@ -43,19 +43,20 @@ typedef enum {
 } entrada_estado_e;
 
 typedef struct {
-	entrada_config_s					Config;
-	entrada_estado_e					Estado;
+	entrada_config_s				Config;
+	entrada_estado_e				Estado;
 } entrada_admin_s;
 
 typedef struct {
-	capturadora_config_s				Config;
-	double								FrecuenciaMuestreo;
-	uint16_t								NivelDisparo;	// Debe traducir el nivel desde fuente
-	uint16_t								Histeresis;		// Se configura en u...Inicializar y no varía por el momento
-	flanco_e 							FlancoDisparo;
-	uint8_t								CapturasRestantes;
-	uint32_t								TiempoInicio;	// [ms] Tiempo inicial de la captura
-	capturadora_estado_e				Estado;
+	capturadora_config_s			Config;
+	double							FrecuenciaMuestreo;
+	uint16_t							NivelDisparo;	// Debe traducir el nivel desde fuente
+	uint16_t							Histeresis;		// Se configura en u...Inicializar y no varía por el momento
+	flanco_e 						FlancoDisparo;
+	uint8_t							CapturasRestantes;
+	uint32_t							TiempoInicio;	// [ms] Tiempo inicial de la captura
+	uint32_t							TiempoCaptura;
+	capturadora_estado_e			Estado;
 } capturadora_admin_s;
 
 typedef enum {
@@ -84,10 +85,12 @@ void 		ProcesarSenial (void);
 void 		ImprimirSenial32 (void);
 bool		ValidarOrigenDisparo ( entrada_id_e * );
 uint8_t	CapturasObjetivo ( void );
+bool     EsValorPrevioDisparo ( uint32_t );
+bool     EsValorParaDisparo ( uint32_t );
 
 /****** Definición de funciones públicas ********************************************************/
 
-bool uCapturadoraInicializar 			( void )
+bool uCapturadoraInicializar ( void )
 {
 	bool control = true;
 	adc_config_s ConfigADC = {0};
@@ -112,12 +115,12 @@ bool uCapturadoraInicializar 			( void )
 	EntradaAdmin [ENTRADA_1].Config.NivelDisparo   = EscalasVerticales [ESCALA_VERTICAL_2]/2;
 	EntradaAdmin [ENTRADA_1].Config.FlancoDisparo  = SUBIDA;
 	EntradaAdmin [ENTRADA_1].Estado = ENTRADA_APAGADA;
-	SenialAdmin [ENTRADA_1].Muestras_p   = MuestrasProcesadas12;
-	SenialAdmin [ENTRADA_1].Inicio		 = 0;
-	SenialAdmin [ENTRADA_1].LargoMaximo  = U_LARGO_CAPTURA;
-	SenialAdmin [ENTRADA_1].Largo        = U_LARGO_CAPTURA;
-	SenialAdmin [ENTRADA_1].Alineacion   = DERECHA_32;
-	SenialAdmin [ENTRADA_1].UltimaAccion = E_INICIALIZADA;
+	SenialAdmin  [ENTRADA_1].Muestras_p   = MuestrasProcesadas12;
+	SenialAdmin  [ENTRADA_1].Inicio		  = 0;
+	SenialAdmin  [ENTRADA_1].LargoMaximo  = U_LARGO_CAPTURA;
+	SenialAdmin  [ENTRADA_1].Largo        = U_LARGO_CAPTURA;
+	SenialAdmin  [ENTRADA_1].Alineacion   = DERECHA_32;
+	SenialAdmin  [ENTRADA_1].UltimaAccion = E_INICIALIZADA;
 
 	// Configuramos escala y frecuencia de ADC 1
 	ConfigADC.Canal = U_ADC_CANAL_1;					// Este canal determina la escala
@@ -131,12 +134,12 @@ bool uCapturadoraInicializar 			( void )
 	EntradaAdmin [ENTRADA_2].Config.NivelDisparo   = EscalasVerticales [ESCALA_VERTICAL_2]/2;
 	EntradaAdmin [ENTRADA_2].Config.FlancoDisparo  = SUBIDA;
 	EntradaAdmin [ENTRADA_2].Estado = ENTRADA_APAGADA;
-   SenialAdmin [ENTRADA_2].Muestras_p   = MuestrasProcesadas12;
-   SenialAdmin [ENTRADA_2].Inicio		 = 0;
-	SenialAdmin [ENTRADA_2].LargoMaximo  = U_LARGO_CAPTURA;
-	SenialAdmin [ENTRADA_2].Largo        = U_LARGO_CAPTURA;
-	SenialAdmin [ENTRADA_2].Alineacion   = IZQUIERDA_32;
-	SenialAdmin [ENTRADA_2].UltimaAccion = E_INICIALIZADA;
+   SenialAdmin  [ENTRADA_2].Muestras_p   = MuestrasProcesadas12;
+   SenialAdmin  [ENTRADA_2].Inicio		  = 0;
+	SenialAdmin  [ENTRADA_2].LargoMaximo  = U_LARGO_CAPTURA;
+	SenialAdmin  [ENTRADA_2].Largo        = U_LARGO_CAPTURA;
+	SenialAdmin  [ENTRADA_2].Alineacion   = IZQUIERDA_32;
+	SenialAdmin  [ENTRADA_2].UltimaAccion = E_INICIALIZADA;
 
 	// Configuramos escala de ADC 2
 	if ( false == uHALadcConfigurar (UHAL_ADC_2,&ConfigADC) ) uHuboErrorTxt("inicializando Capturadora (ADC2)");
@@ -363,29 +366,23 @@ bool uCapturadoraParar ( void )
   */
 bool uCapturadoraActualizar ( void)
 {
+	// Variables locales -------------------------------------------------------
 	uint32_t Delta, i;
-
-	// Precondiciones
+	// Precondiciones ----------------------------------------------------------
 	if ( Capturadora.Estado != CAPTURADORA_CAPTURANDO ) return false;
-
-	// Actualizamos
+	// Actualizamos ------------------------------------------------------------
 	if (true == LecturaCompletada) {
 		LecturaCompletada = false;
-
-		// Actualizamos estado de Capturadora
+		// Actualizamos estado y sumamos lo capturado ---------------------------
 		Capturadora.Estado = CAPTURADORA_PROCESANDO;
-
-		// Sumamos lo capturado
 		if ( true == SumarSenial() ) {
 			Capturadora.CapturasRestantes--;
 			uLedApagar ( UOSAL_PIN_LED_VERDE_INCORPORADO );
-
 		}
 		if (Capturadora.CapturasRestantes > 16) {
 			uHuboErrorTxt ("en Actualizar Capturadora.");
 		}
-
-		// Analizamos si volvemos a capturar o procesamos
+		// Analizamos si volvemos a capturar o procesamos -----------------------
 		Delta = uMilisegundos() - Capturadora.TiempoInicio;
 		if ( (Capturadora.CapturasRestantes>0) &&
 			  (Delta<U_TIEMPO_CAPTURA_MAXIMO)    ) {
@@ -395,7 +392,7 @@ bool uCapturadoraActualizar ( void)
 												U_LARGO_CAPTURA_INICIAL );	// Largo del vector
 			Capturadora.Estado = CAPTURADORA_CAPTURANDO;
 		} else {
-			// Cortamos capturas y proceso resultado
+			// Paramos capturas y proceso resultado ------------------------------
 			if ( Capturadora.CapturasRestantes == CapturasObjetivo()) {
 				// No pudimos hacer ninguna captura sincronizada.
 				// Cargamos lo que hay antes de procesar.
@@ -404,8 +401,7 @@ bool uCapturadoraActualizar ( void)
 					CantidadProcesadas12 [i-U_MUESTRAS_DESCARTADAS] = 1;
 				}
 			}
-			// Procesamos lo que hay:
-			uEscribirTxt("Procesando...\n\r");
+			// Procesamos lo que hay ---------------------------------------------
 			ProcesarSenial();
 			if ( ORIGEN_ASINCRONICO == Capturadora.Config.OrigenDisparo ||
 				  Capturadora.CapturasRestantes == CapturasObjetivo()     ) {
@@ -417,6 +413,7 @@ bool uCapturadoraActualizar ( void)
 			}
 			SenialAdmin[ENTRADA_1].FrecuenciaMuestreo = Capturadora.FrecuenciaMuestreo;
 			SenialAdmin[ENTRADA_2].FrecuenciaMuestreo = Capturadora.FrecuenciaMuestreo;
+			Capturadora.TiempoCaptura = uMilisegundos() - Capturadora.TiempoInicio;
 			Capturadora.Estado = CAPTURADORA_CAPTURA_COMPLETADA;
 		}
 	}
@@ -445,41 +442,50 @@ void uHALadcLecturaCompletada ( adc_id_e ID )
 	uLedEncender ( UOSAL_PIN_LED_VERDE_INCORPORADO );
 }
 
+/**------------------------------------------------------------------------------------------------
+  * @brief	Suma una captura al promedio de señal, sincronizando según lo configurado.
+  * @param	Ninguno
+  * @retval	true si logró sincronizar y sumar la señal.
+  */
 bool SumarSenial(void)
 {
-	/* Variables locales */
+	/* Variables locales -------------------------------------------------------------------------*/
 	bool Control = false;
-	bool EstadoPrevio = false;
+	//bool EstadoPrevio = false;
+	bool PrevioEsAlto, ActualEsAlto;
+	bool FlancoSubida, FlancoBajada;
 	uint32_t Disparo, i, j;
 	uint32_t Mascara  = 0;
 	uint8_t  Desplaza = 0;
-	uint32_t Inicio  = U_MUESTRAS_DESCARTADAS;
-	uint32_t Final   = U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA;
+	uint32_t Inicio   = U_MUESTRAS_DESCARTADAS;
+	uint32_t Final    = U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA;
 	uint32_t LimiteSuperior = (Capturadora.NivelDisparo + Capturadora.Histeresis);
 	uint32_t LimiteInferior = (Capturadora.NivelDisparo - Capturadora.Histeresis);
 	entrada_id_e Origen = Capturadora.Config.OrigenDisparo;
 
-	/* Precondiciones y verificaciones */
+	/* Precondiciones y verificaciones -----------------------------------------------------------*/
 	if ( CAPTURADORA_PROCESANDO != Capturadora.Estado ) return false;
-	if ( LimiteSuperior           > MAXIMO_12B )                            LimiteSuperior = MAXIMO_12B;
+	if ( (Capturadora.NivelDisparo + Capturadora.Histeresis) > MAXIMO_12B ) LimiteSuperior = MAXIMO_12B;
 	if ( Capturadora.NivelDisparo < (Capturadora.Histeresis + MINIMO_12B) ) LimiteInferior = MINIMO_12B;
 	if ( Origen > ENTRADA_2 && Origen !=ORIGEN_ASINCRONICO) {
-		uHuboErrorTxt (" Origen invalido en SumarSenial de uCapturadora."); // TODO preparar este código para que procese modo alternado
+		uHuboErrorTxt (" Origen invalido en SumarSenial de uCapturadora.");
+		// TODO preparar este código para que procese modo alternado
 	}
 
-	/* Suma de señal capturada */
+	/* Suma de señal capturada de ORIGEN_ASINCRONICO ---------------------------------------------*/
+	// Solo debe copiar captura directamente
 	if ( ORIGEN_ASINCRONICO == Origen ) {
-		// No hay nada para sincronizar y copio directamente:
 		Inicio = U_MUESTRAS_DESCARTADAS;
 		Final  = U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA;
 		for ( i=Inicio; i<Final; i++) {
 			MuestrasProcesadas12 [i-Inicio] = MuestrasCapturadas12[i];
 			CantidadProcesadas12 [i-Inicio] = 1;
 		}
-		return true;
-		// Fin de función.
+		return true; // Fin de función.
 	}
 
+	/* Preparativos para sumar desde otros orígenes ----------------------------------------------*/
+	// Asignamos valores para comparación y sincronismo
 	if ( ENTRADA_1 == Origen ) {
 		Mascara = MASCARA_DERECHA16;
 		Desplaza = 0;
@@ -488,68 +494,74 @@ bool SumarSenial(void)
 		Mascara = MASCARA_IZQUIERDA16;
 		Desplaza = 16;
 	}
+	FlancoSubida = (SUBIDA==Capturadora.FlancoDisparo);
+	FlancoBajada = (BAJADA==Capturadora.FlancoDisparo);
+	// Se puede agregar flanco AMBOS luego.
 
-	// Evalúo si la señal inicia por debajo del nivel buscado:
-	EstadoPrevio = ( (MuestrasCapturadas12[U_MUESTRAS_DESCARTADAS]&Mascara)>>Desplaza <= LimiteInferior );
+	// Evaluamos estado inicial de la muestra previa
+	PrevioEsAlto = false;
+	PrevioEsAlto = ( ((MuestrasCapturadas12[U_MUESTRAS_DESCARTADAS+U_MUESTRAS_PRE_DISPARO-1]
+						  &Mascara)>>Desplaza)
+			         >= LimiteSuperior );
+	ActualEsAlto = PrevioEsAlto;
 
-	// Evalúo muestra la muestra...
-	//for ( Disparo=U_MUESTRAS_DESCARTADAS; Disparo<U_LARGO_CAPTURA_INICIAL; Disparo++) {
-	for ( Disparo=U_MUESTRAS_DESCARTADAS; Disparo<(U_MUESTRAS_DESCARTADAS+U_LARGO_CAPTURA); Disparo++) {
+	/* Evalúo muestra a muestra ------------------------------------------------------------------*/
+	for ( Disparo = (U_MUESTRAS_DESCARTADAS+U_MUESTRAS_PRE_DISPARO); // inicio de ventana
+			Disparo < (U_LARGO_CAPTURA_INICIAL-U_LARGO_CAPTURA);       // fin de ventana
+			Disparo++)  {
 
-		// Supondremos por ahora siempre flanco de subida
-		if ( ( true == EstadoPrevio )                                                      &&
-			  ( Disparo >= (U_MUESTRAS_DESCARTADAS + U_MUESTRAS_PRE_DISPARO) )      &&
-			  ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior) ) {
-	    	// Hubo disparo!!! -------------------------------------------------------------------------------------------
+		// Analizamos la muestra actual
+		if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior ) ActualEsAlto = true;
+	   if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza <= LimiteInferior ) ActualEsAlto = false;
 
+		// Verificamos si hubo un cambio de estado acorde al flanco seleccionado
+		if ( ( FlancoSubida & !PrevioEsAlto &  ActualEsAlto ) ||
+			  ( FlancoBajada &  PrevioEsAlto & !ActualEsAlto )    ) {
+
+			/* Iniciamos suma de captura -----------------------------------------------------------*/
 			// Muestra inicial que se debe sumar:
-			if ( Disparo >= (U_MUESTRAS_PRE_DISPARO + U_MUESTRAS_DESCARTADAS) ) {
-				// Verificación redundante que debiera verificarse siempre
-				Inicio = Disparo - U_MUESTRAS_PRE_DISPARO;
-			} else {
-				uHuboErrorTxt("sincronizando disparo de uCapturadora.");
-				Inicio = U_MUESTRAS_DESCARTADAS;
+			Inicio = Disparo - U_MUESTRAS_PRE_DISPARO;
+			if ( Disparo < (U_MUESTRAS_PRE_DISPARO + U_MUESTRAS_DESCARTADAS) ) {
+				uHuboErrorTxt("sincronizando disparo de uCapturadora (Inicial).");
 			}
-			// Inicio = (Inicio > U_MUESTRAS_DESCARTADAS) ? Inicio : U_MUESTRAS_DESCARTADAS;
-			// Puede haber menos muestras para sumar?
 
 			// Muestra final que se debe sumar:
 			Final = Disparo + U_MUESTRAS_POS_DISPARO;
-			Final = (Final > U_LARGO_CAPTURA_INICIAL) ? U_LARGO_CAPTURA_INICIAL : Final;
-				// Puede haber menos muestras para sumar
+			if ( Final > U_LARGO_CAPTURA_INICIAL) {
+				uHuboErrorTxt("sincronizando disparo de uCapturadora (Final).");
+			}
 
+			// Suma en sí...
 	    	for ( i=Inicio; i<Final; i++) {
 	    		// Acá se supone que suma por separado ambos ADC. Muestras a promediar deben ser igual o menor a 16.
-	    		j = i - (Disparo-U_MUESTRAS_PRE_DISPARO) ;
+	    		j = i - Inicio;
 	    		if (j>=U_LARGO_CAPTURA) uHuboErrorTxt(" Desborde de indice sincronizando en uCapturadora.");
 	    		MuestrasProcesadas12 [j] += MuestrasCapturadas12[i];
-	    		CantidadProcesadas12 [j] ++;
+	    		//CantidadProcesadas12 [j] ++;
 	    	}
-	    	Control = true;
-	    	Disparo = U_LARGO_CAPTURA_INICIAL;
-	    }
+	    	Control = true;  // lo logramos!!!
+	    	Disparo = U_LARGO_CAPTURA_INICIAL;  // para salir del for
+	   }
 
-	    // Actualizar Bajo antes del tiempo de Disparo
-	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza <= LimiteInferior ) EstadoPrevio = true;
-	    if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza >= LimiteSuperior ) EstadoPrevio = false;
-	}
+	   // Actualizar estado previo y volver a empezar
+		PrevioEsAlto = ActualEsAlto;
+	} // Fin del for
 	return Control;
 }
 
 void ProcesarSenial(void)
 {
 	uint32_t i, DERECHA, IZQUIERDA;
-	for (i=0; i<U_LARGO_CAPTURA; i++) {
-		if ( CantidadProcesadas12[i] > 0 ) {
-			// Si hubo muestra capturada en i, promediamos:
-			DERECHA   = (MuestrasProcesadas12[i]&MASCARA_DERECHA16)   / CantidadProcesadas12[i];
-			IZQUIERDA = (MuestrasProcesadas12[i]&MASCARA_IZQUIERDA16) / CantidadProcesadas12[i];
+	uint8_t Divisor = CapturasObjetivo() - Capturadora.CapturasRestantes;
+	if (Divisor > 0) {
+		// Si hubo al menos una captura, promediamos:
+		for (i=0; i<U_LARGO_CAPTURA; i++) {
+			DERECHA   = (MuestrasProcesadas12[i]&MASCARA_DERECHA16)   / Divisor;
+			IZQUIERDA = (MuestrasProcesadas12[i]&MASCARA_IZQUIERDA16) / Divisor;
 			IZQUIERDA = IZQUIERDA & MASCARA_IZQUIERDA16; // Dejamos la parte entera de la muestra
 																		// alineada a la izquierda.
 			// Cargamos promedio en senial procesada:
 			MuestrasProcesadas12[i] = IZQUIERDA + DERECHA;
-		} else {
-			MuestrasProcesadas12[i] = 0; // Esto es redundante.
 		}
 	}
 }
@@ -572,19 +584,18 @@ void ImprimirSenial32 (void)
 		if ( (i==Disparo) && (i>0) ) uEscribirTxt ("---> Disparo <---\n\r");
 
 		uEscribirUint ( MUESTRA_ENTRADA_1 );	// Dato de ENTRADA 1
-		uEscribirTxt 	( "\t" );		// Tabulación
+		uEscribirTxt  ( "\t" );		// Tabulación
 		uEscribirUint ( MUESTRA_ENTRADA_2 );	// Dato de ENTRADA 2
-		uEscribirTxt 	( "\t" );		// Tabulación
-		uEscribirUint ( CantidadProcesadas12[i] );	// Dato de ENTRADA 2
-		uEscribirTxt    ( "\n\r" );
-
-		//MAXIMO = P_ADC1 > MAXIMO ? P_ADC1 : MAXIMO;
-		//MINIMO = P_ADC1 < MINIMO ? P_ADC1 : MINIMO;
-
+		//uEscribirTxt  ( "\t" );		// Tabulación
+		//uEscribirUint ( CantidadProcesadas12[i] );	// Dato de ENTRADA 2
+		uEscribirTxt  ( "\n\r" );
 	}
-	//uEscribirTextoEnteroSS ("\n\rMaximo ultimo = ", MAXIMO);
-	//uEscribirTextoEnteroSS ("\n\rMinimo ultimo = ", MINIMO);
-	//uEscribirTexto 		   ("\n\r------------------------------------------------------------------\n\r");
+	uEscribirTxtUint ( "Muestras capturadas = ", CapturasObjetivo() - Capturadora.CapturasRestantes );
+	uEscribirTxt     ( ". \n\r" );
+	uEscribirTxtUint ( "Tiempo de captura = ", Capturadora.TiempoCaptura );
+	uEscribirTxt     ( "ms. \n\r" );
+	uEscribirTxtUint ( "Nivel (12B) = ", Capturadora.NivelDisparo );
+	uEscribirTxt     ( ". \n\r" );
 }
 
 bool ValidarOrigenDisparo ( entrada_id_e * P_ORIGEN )
@@ -604,5 +615,46 @@ uint8_t CapturasObjetivo ( void )
 	if ( Capturadora.Config.OrigenDisparo == ORIGEN_ASINCRONICO )   Retorno = 1;
 	return Retorno;
 }
+
+bool EsValorPrevioDisparo ( uint32_t VALOR )
+{
+	if ( Capturadora.FlancoDisparo == SUBIDA ) {
+		if ( VALOR <= (Capturadora.NivelDisparo-Capturadora.Histeresis) ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	if ( Capturadora.FlancoDisparo == BAJADA ) {
+		if ( VALOR >= (Capturadora.NivelDisparo+Capturadora.Histeresis) ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	uHuboErrorTxt ("en EsValorPrevioDisparo de uCapturadora.");
+	return false;
+}
+
+bool EsValorParaDisparo ( uint32_t VALOR )
+{
+	if ( Capturadora.FlancoDisparo == BAJADA ) {
+		if ( VALOR <= (Capturadora.NivelDisparo-Capturadora.Histeresis) ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	if ( Capturadora.FlancoDisparo == SUBIDA ) {
+		if ( VALOR >= (Capturadora.NivelDisparo+Capturadora.Histeresis) ) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	uHuboErrorTxt ("en EsValorParaDisparo de uCapturadora.");
+	return false;
+}
+
 
 /****************************************************************** FIN DE ARCHIVO ***************/

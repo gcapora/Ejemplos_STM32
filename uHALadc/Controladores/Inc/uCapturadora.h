@@ -42,8 +42,8 @@ typedef enum {
 
 typedef enum {
 	SUBIDA,
-	BAJA,
-	AMBOS
+	BAJADA //,
+	// AMBOS <--- Esto se implementará en otra etapa porque dede analizarse que hacer cuando se promedia
 } flanco_e;
 
 typedef struct {

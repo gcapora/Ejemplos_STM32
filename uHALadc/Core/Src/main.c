@@ -37,9 +37,8 @@ uint32_t ADC_CONVERTIDO [ MUESTRAS ] = {0};
 uint32_t ADC_SUMA       [ MUESTRAS ] = {0};
 uint8_t  ADC_CANTIDAD   [ MUESTRAS ] = {0};
 adc_config_s ADC_CONFIG;
-capturadora_config_s CAPTU_CONFIG;
-entrada_config_s     CAPTU_1 = {0};
-entrada_config_s     CAPTU_2 = {0};
+capturadora_config_s CAPTU_CONFIG    = {0};
+entrada_config_s     ENTRADA_CONFIG  = {0};
 
 float    PROMEDIO = 0;
 float    PROMEDIO_TOTAL = 0;
@@ -50,71 +49,74 @@ uint32_t Tiempo_us = 0;
 
 /* Variables importadas -------------------------------------------------------*/
 
-// extern ADC_HandleTypeDef h_adc1;
-// extern ADC_HandleTypeDef h_adc2;
-// extern TIM_HandleTypeDef tempo_dma_s;
-// extern TIM_HandleTypeDef Tempo_admin[UHAL_CANTIDAD_MAP];
-
 /* Private function prototypes ------------------------------------------------*/
 
 void SystemClock_Config(void);
 void EscribirDatos(uint32_t);
 void PromediarConDisparo(void);
 
-/* Private user code ----------------------------------------------------------*/
-
-/**
+/**************************************************************************************************
   * @brief  The application entry point.
   * @retval int
   */
 int main(void)
 {
-  /* MCU Configuration --------------------------------------------------------*/
+  /* MCU Configuration --------------------------------------------------------------------------*/
 
   HAL_Init();
   SystemClock_Config();
 
-  /* Inicializa módulos y objetos ---------------------------------------------*/
+  /* Inicializa módulos y objetos ---------------------------------------------------------------*/
 
   uHALinicializar ();
   uHALmapInicializar ( UHAL_MAP_PE5 );
   uCapturadoraInicializar ();
 
-  /*---------------------------------------------------------------------------*/
+  /*---------------------------------------------------------------------------------------------*/
 
   uEscribirTxt ("\n\r\n\r");
   uEscribirTxt ("============================================================\n\r");
   uEscribirTxt ("ADC dual con DMA (mayo 2024)\n\r");
   uEscribirTxt ("============================================================\n\r");
 
-  // Señal cuadrada testigo de 100kHz
+  // Señal cuadrada testigo -----------------------------------------------------------------------
+
   uEscribirTxtUint	( "Frecuencia de senial cuadrada\t = ",
 		  	  	  	  	  	  (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 100 ) );
   uEscribirTxt			( " Hz. \n\r");
+  uHALmapEncender    ( UHAL_MAP_PE5 );
+  Tiempo_us = uMicrosegundos();
+  do {} while (uMicrosegundos() - Tiempo_us < 600e3 );
+  // Este retardo sirve para que la señal cuadrada inicie.
 
-  // Capturadora
-  uCapturadoraObtener	( &CAPTU_CONFIG );
-  uEscribirTxtUint		( "Frecuencia de muestreo      \t = ",
-		  	  	  	  	  	  	  (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
-		  	  	  	  	  	  	  // (uint32_t) ((float)U_LARGO_CAPTURA/CAPTU_CONFIG.EscalaHorizontal) );
-  uEscribirTxt         	( " Hz. \n\r");
+  // Capturadora ----------------------------------------------------------------------------------
 
-  // Inicio señal cuadrada
-  uHALmapEncender ( UHAL_MAP_PE5 );
-  Tiempo_us = uMicrosegundos();         	// Leo inicio de conteo en us.
-  do {} while (uMicrosegundos() - Tiempo_us < 600e3 ); // Este retardo sirve para que la señal cuadrada inicie.
+  uCapturadoraObtener	 ( &CAPTU_CONFIG );
+  CAPTU_CONFIG.EscalaHorizontal = 1.0/2000;
+  CAPTU_CONFIG.ModoCaptura      = CAPTURA_PROMEDIADA_16;
+  uCapturadoraConfigurar ( &CAPTU_CONFIG );
+  uEscribirTxtUint		 ( "Frecuencia de muestreo      \t = ",
+		  	  	  	  	  	  	   (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
+  uEscribirTxt         	 ( " Hz. \n\r");
 
-  // Configuramos entrada 2:
-  uCapturadoraEntradaObtener ( ENTRADA_2, &CAPTU_2 );
-  CAPTU_2.EscalaVertical = 3.0;
-  CAPTU_2.NivelDisparo = 1.0;
-  uCapturadoraEntradaConfigurar ( ENTRADA_2, &CAPTU_2 );
+  // Configuramos entradas ------------------------------------------------------------------------
 
-  // Iniciamos captura
+  uCapturadoraEntradaObtener    ( ENTRADA_2, &ENTRADA_CONFIG );
+  ENTRADA_CONFIG.EscalaVertical = 3.3;
+  ENTRADA_CONFIG.NivelDisparo   = 1.65;
+  ENTRADA_CONFIG.FlancoDisparo  = BAJADA;
+  uCapturadoraEntradaConfigurar ( ENTRADA_1, &ENTRADA_CONFIG );
+  ENTRADA_CONFIG.NivelDisparo   = 0.5;
+  ENTRADA_CONFIG.FlancoDisparo  = SUBIDA;
+  uCapturadoraEntradaConfigurar ( ENTRADA_2, &ENTRADA_CONFIG );
+
+  // Iniciamos captura 1 --------------------------------------------------------------------------
+
+  uEscribirTxt ("============================================================\n\r");
   TareaNro = 1;
-  uEscribirTxt ( "Iniciamos captura...\n\r" );
-  uCapturadoraEntradaEncender (ENTRADA_1);
-  uCapturadoraEntradaEncender (ENTRADA_2);
+  uEscribirTxt ( "Iniciamos captura #1...\n\r" );
+  uCapturadoraEntradaEncender ( ENTRADA_1 );
+  uCapturadoraEntradaEncender ( ENTRADA_2 );
   uCapturadoraIniciar ();
 
   //-----------------------------------------------------------------------------------------------
@@ -129,9 +131,10 @@ int main(void)
 		  uEscribirTxtUint	( "Frecuencia de muestreo = ",
 				  	  	  	  	  	  (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
 		  uEscribirTxt      	( " Hz. \n\r");
-		  uEscribirTxtUint	( "Tardamos ", Tiempo_us );
-		  uEscribirTxt 		( " us. \n\r");
+		  /*uEscribirTxtUint	( "Tardamos ", Tiempo_us );
+		  uEscribirTxt 		( " us. \n\r");*/
 
+		  uEscribirTxt ("============================================================\n\r");
 		  Tiempo_us = uMicrosegundos();
 		  TareaNro++;
 	  }
@@ -139,11 +142,11 @@ int main(void)
 	  // Pedimos una nueva captura luego de un tiempo...
 	  if (uMicrosegundos () - Tiempo_us > 2e6 && 2==TareaNro)  {
 		  Tiempo_us = uMicrosegundos();
-		  uEscribirTxt("2da captura.\n\r");
+		  uEscribirTxt("Iniciamos captura #2.\n\r");
 		  uCapturadoraObtener ( &CAPTU_CONFIG );
-		  CAPTU_CONFIG.EscalaHorizontal = 1.0/5000;
-		  CAPTU_CONFIG.ModoCaptura      = CAPTURA_PROMEDIADA_4;
+		  //CAPTU_CONFIG.EscalaHorizontal = 1.0/100;
 		  CAPTU_CONFIG.OrigenDisparo    = ENTRADA_2;
+		  CAPTU_CONFIG.ModoCaptura      = 0;
 		  uCapturadoraConfigurar ( &CAPTU_CONFIG );
 		  uCapturadoraIniciar ();
 	  }
