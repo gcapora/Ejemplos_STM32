@@ -209,9 +209,10 @@ bool uHALadcConfigurar ( adc_id_e ID, adc_config_s * CONFIG )
 		sConfig.Rank = 1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 		if (HAL_ADC_ConfigChannel(&admin_adc1, &sConfig) != HAL_OK) uHuboErrorTxt("en configuracion de canal de ADC.");
+		admin_adc[ID].Canal = CONFIG->Canal;
 
 	/*** ¿ADC2 seleccionado? ***----------------------------------------------*/
-	} else if ( UHAL_ADC_2 == ID ) {
+	} else if ( UHAL_ADC_2 == ID ){
 		if ( admin_adc[ID].Estado == ADC_SUBORDINADO &&
 			admin_adc[UHAL_ADC_1].Estado == ADC_INACTIVO ) {
 			/* Sólo admitimos estado subordinado y con ADC1 inactivo */
@@ -231,6 +232,7 @@ bool uHALadcConfigurar ( adc_id_e ID, adc_config_s * CONFIG )
 			sConfig.Rank = 1;
 			sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 			if (HAL_ADC_ConfigChannel(&admin_adc2, &sConfig) != HAL_OK) uHuboError();
+			admin_adc[ID].Canal = CONFIG->Canal;
 		}
 	}
 

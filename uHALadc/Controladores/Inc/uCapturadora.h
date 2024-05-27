@@ -19,7 +19,7 @@
 
 #define U_ENTRADAS_CANTIDAD       				2
 #define U_NUM_MAX_CAPTURAS_PROMEDIAR			16
-#define U_LARGO_CAPTURA								200	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
+#define U_LARGO_CAPTURA								100	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
 
 #define CAPTURA_UNICA								0b00000001
 #define CAPTURA_CONTINUA							0b00000010  // Sin habilitar por ahora
@@ -66,24 +66,24 @@ typedef struct {
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool   uCapturadoraInicializar		( void );							// Inicialización general.
-bool   uCapturadoraConfigurar			( capturadora_config_s * );	// Configuración de base de tiempo y disparo.
-bool   uCapturadoraObtener				( capturadora_config_s * );
-double uCapturadoraLeerFrecuenciaMuestreo ( void );
-bool   uCapturadoraEntradaConfigurar( entrada_id_e,					// Configuración de un canal.
-												  entrada_config_s * );
-bool   uCapturadoraEntradaObtener	( entrada_id_e,
-											  	  entrada_config_s * );
-bool   uCapturadoraSenialObtener    ( entrada_id_e,
-											  	  senial_s * );
-float  uCapturadoraEscalaVertical	( float );
-bool   uCapturadoraEntradaEncender	( entrada_id_e );					// Encendido y apagado de un canal.
-bool   uCapturadoraEntradaApagar		( entrada_id_e );
-bool   uCapturadoraIniciar				( void );							// Para que el inicio sea exitoso
-																						// debe haber al menos un canal encendido.
-bool   uCapturadoraParar				( void );
-bool   uCapturadoraActualizar			( void ); 							// Verifica tareas pendientes y actua.
-bool   uCapturadoraSenialCargada    ( void ); 							// Indica si hay al menos una señal cargada.
+bool   	uCapturadoraInicializar			( void );							// Inicialización general.
+bool   	uCapturadoraConfigurar			( capturadora_config_s * );	// Configuración de base de tiempo y disparo.
+bool		uCapturadoraObtener				( capturadora_config_s * );
+senial_s*uCapturadoraSenialObtener		( entrada_id_e );					// Obtener el puntero a la senial
+double	uCapturadoraLeerFrecuenciaMuestreo ( void );
+float		uCapturadoraLeerEscalaVertical( float );							// Devuelve la escala correspondiente
+uint8_t	uCapturadoraLeerSincronizadas	( void );							// Devuelve la cantidad de capturas que se lograron sincronizar
+uint32_t	uCapturadoraLeerTiempoCaptura	( void );
+
+bool   	uCapturadoraEntradaConfigurar	( entrada_id_e, entrada_config_s * ); // Configuración de un canal.
+bool   	uCapturadoraEntradaObtener		( entrada_id_e, entrada_config_s * );
+bool   	uCapturadoraEntradaEncender	( entrada_id_e );					// Encendido y apagado de un canal.
+bool   	uCapturadoraEntradaApagar		( entrada_id_e );
+
+bool   	uCapturadoraIniciar				( void );							// Para que el inicio sea exitoso. Debe haber al menos un canal encendido.
+bool   	uCapturadoraParar					( void );
+bool   	uCapturadoraActualizar			( void ); 							// Verifica tareas pendientes y actua.
+bool   	uCapturadoraSenialCargada    	( void ); 							// Indica si hay una señal cargada.
 
 /*************************************************************************************************/
 #endif /*  */

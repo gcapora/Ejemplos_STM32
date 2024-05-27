@@ -182,6 +182,25 @@ void     uEscribirUint ( uint32_t ENTEROP)
     UART_ENVIAR_CADENA (Cadena);
 }
 
+/*******************************************************************************
+  * @brief  Recibe por UART una cantidad definida de caracteres
+  * @param  Puntero donde guardar char
+  * @param  Tiempo de espera
+  * @retval true si leyó algo
+  */
+bool uLeerChar (uint8_t * caracter, uint32_t tiempo) {
+	// Variables locales;
+	HAL_StatusTypeDef Resultado;
+
+	// Precondiciones
+	if (caracter == NULL) uHuboErrorTxt("en uLeerChar de uOSAL.");
+	tiempo = (tiempo>1000) ? 1000 : tiempo;
+
+	// Recibo...
+	Resultado = HAL_UART_Receive(&uart_e, (uint8_t *) caracter, 1, tiempo);
+	if (Resultado == HAL_OK) return true;
+	return false;
+}
 
 /****** Definición de funciones privadas *********************************************************/
 

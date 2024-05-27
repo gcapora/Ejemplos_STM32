@@ -1,59 +1,37 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Ejemplo de ADC dual con DMA
+  * @brief          : Ejemplo de uso de uCapturadora
   ******************************************************************************
   *
-  * El ejemplo se desarrolló en base a:
-  * https://deepbluembedded.com/stm32-adc-read-example-dma-interrupt-polling/
+  * El módulo uCapturadora utiliza, a su vez, el módulo uHALadc.h.
   *
   ******************************************************************************
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "math.h"
-#include "uOSAL.h"
-#include "uHAL.h"
-#include "uCapturadora.h"
+
 #include "main.h"
-//#include "adc.h"
-//#include "dma.h"
-//#include "tim.h"
-//#include "gpio.h"
 
 /* Private macro -------------------------------------------------------------*/
 
-#define DELTA       100
-#define MUESTRAS    60
-#define PREMUESTRAS 20
-#define PREDESCARTE 10
-#define NIVEL       1500
-#define HISTERESIS  20
-#define N_CAPTURAS  16
+#define FREC_TESTIGO 4000.0
 
 /* Private variables ---------------------------------------------------------*/
 
-uint32_t ADC_CONVERTIDO [ MUESTRAS ] = {0};
-uint32_t ADC_SUMA       [ MUESTRAS ] = {0};
-uint8_t  ADC_CANTIDAD   [ MUESTRAS ] = {0};
-adc_config_s ADC_CONFIG;
 capturadora_config_s CAPTU_CONFIG    = {0};
 entrada_config_s     ENTRADA_CONFIG  = {0};
-
-float    PROMEDIO = 0;
-float    PROMEDIO_TOTAL = 0;
-volatile uint32_t Num_Conversiones = 0;
-bool     Escribimos = false;
-uint     TareaNro = 0;
-uint32_t Tiempo_us = 0;
+senial_s * 				P_Senial_E1 = NULL;
+senial_s * 				P_Senial_E2 = NULL;
+uint8_t    				TareaNro = 0;
+uint8_t					Caracter[2] = {0};
+uint32_t 				Tiempo_us = 0;
 
 /* Variables importadas -------------------------------------------------------*/
 
 /* Private function prototypes ------------------------------------------------*/
 
 void SystemClock_Config(void);
-void EscribirDatos(uint32_t);
-void PromediarConDisparo(void);
 
 /**************************************************************************************************
   * @brief  The application entry point.
@@ -81,31 +59,31 @@ int main(void)
 
   // Señal cuadrada testigo -----------------------------------------------------------------------
 
-  uEscribirTxtUint	( "Frecuencia de senial cuadrada\t = ",
-		  	  	  	  	  	  (uint32_t) uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, 100 ) );
+  uEscribirTxtUint	( "Frecuencia de senial cuadrada\t= ",
+		  	  	  	  	  	  (uint32_t) round( uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, FREC_TESTIGO ) ) );
   uEscribirTxt			( " Hz. \n\r");
   uHALmapEncender    ( UHAL_MAP_PE5 );
   Tiempo_us = uMicrosegundos();
-  do {} while (uMicrosegundos() - Tiempo_us < 600e3 );
+  do {} while (uMicrosegundos() - Tiempo_us < 5e5 );
   // Este retardo sirve para que la señal cuadrada inicie.
 
   // Capturadora ----------------------------------------------------------------------------------
 
   uCapturadoraObtener	 ( &CAPTU_CONFIG );
-  CAPTU_CONFIG.EscalaHorizontal = 1.0/2000;
+  CAPTU_CONFIG.EscalaHorizontal = 1.5/FREC_TESTIGO;
   CAPTU_CONFIG.ModoCaptura      = CAPTURA_PROMEDIADA_16;
   uCapturadoraConfigurar ( &CAPTU_CONFIG );
-  uEscribirTxtUint		 ( "Frecuencia de muestreo      \t = ",
-		  	  	  	  	  	  	   (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
-  uEscribirTxt         	 ( " Hz. \n\r");
+  P_Senial_E1 = uCapturadoraSenialObtener ( ENTRADA_1 );
+  P_Senial_E2 = uCapturadoraSenialObtener ( ENTRADA_2 );
 
   // Configuramos entradas ------------------------------------------------------------------------
 
-  uCapturadoraEntradaObtener    ( ENTRADA_2, &ENTRADA_CONFIG );
-  ENTRADA_CONFIG.EscalaVertical = 3.3;
-  ENTRADA_CONFIG.NivelDisparo   = 1.65;
+  uCapturadoraEntradaObtener    ( ENTRADA_1, &ENTRADA_CONFIG );
+  ENTRADA_CONFIG.EscalaVertical = 3;
+  ENTRADA_CONFIG.NivelDisparo   = 1.5;
   ENTRADA_CONFIG.FlancoDisparo  = BAJADA;
   uCapturadoraEntradaConfigurar ( ENTRADA_1, &ENTRADA_CONFIG );
+  ENTRADA_CONFIG.EscalaVertical = 3;
   ENTRADA_CONFIG.NivelDisparo   = 0.5;
   ENTRADA_CONFIG.FlancoDisparo  = SUBIDA;
   uCapturadoraEntradaConfigurar ( ENTRADA_2, &ENTRADA_CONFIG );
@@ -125,15 +103,7 @@ int main(void)
 
 	  // Verificamos si hay una nueva señal cargada...
 	  if ( uCapturadoraSenialCargada() ){
-		  Tiempo_us = uMicrosegundos() - Tiempo_us;
-
-		  //uEscribirTexto				( "MSJ Senial cargada.\n\r" );
-		  uEscribirTxtUint	( "Frecuencia de muestreo = ",
-				  	  	  	  	  	  (uint32_t) uCapturadoraLeerFrecuenciaMuestreo() );
-		  uEscribirTxt      	( " Hz. \n\r");
-		  /*uEscribirTxtUint	( "Tardamos ", Tiempo_us );
-		  uEscribirTxt 		( " us. \n\r");*/
-
+		  ImprimirSenial32_main();
 		  uEscribirTxt ("============================================================\n\r");
 		  Tiempo_us = uMicrosegundos();
 		  TareaNro++;
@@ -143,16 +113,79 @@ int main(void)
 	  if (uMicrosegundos () - Tiempo_us > 2e6 && 2==TareaNro)  {
 		  Tiempo_us = uMicrosegundos();
 		  uEscribirTxt("Iniciamos captura #2.\n\r");
+
 		  uCapturadoraObtener ( &CAPTU_CONFIG );
 		  //CAPTU_CONFIG.EscalaHorizontal = 1.0/100;
 		  CAPTU_CONFIG.OrigenDisparo    = ENTRADA_2;
 		  CAPTU_CONFIG.ModoCaptura      = 0;
 		  uCapturadoraConfigurar ( &CAPTU_CONFIG );
+
+		  uCapturadoraEntradaObtener    ( ENTRADA_1, &ENTRADA_CONFIG );
+		  ENTRADA_CONFIG.EscalaVertical = 3;
+		  ENTRADA_CONFIG.NivelDisparo   = 2;
+		  ENTRADA_CONFIG.FlancoDisparo  = SUBIDA;
+		  uCapturadoraEntradaConfigurar ( ENTRADA_1, &ENTRADA_CONFIG );
+
+		  uCapturadoraEntradaObtener    ( ENTRADA_2, &ENTRADA_CONFIG );
+		  ENTRADA_CONFIG.EscalaVertical = 6;
+		  ENTRADA_CONFIG.NivelDisparo   = 2;
+		  ENTRADA_CONFIG.FlancoDisparo  = BAJADA;
+		  uCapturadoraEntradaConfigurar ( ENTRADA_2, &ENTRADA_CONFIG );
+
 		  uCapturadoraIniciar ();
+	  }
+
+	  if (TareaNro > 2 && uLeerChar ( &Caracter[0], 1 )) {
+		  uEscribirTxt ( (char *) Caracter );
 	  }
 
   } // -----> fin de loop
 }	 // -----> fin de main
+
+/*
+void ImprimirSenial32_main (void)
+{
+	// Variables locales:
+	uint32_t i, Muestra, MUESTRA_ENTRADA_1, MUESTRA_ENTRADA_2, Disparo;
+
+	// Precondiciones
+	if ( NULL == P_Senial_E1 || NULL == P_Senial_E2 ) uHuboErrorTxt ("en Imprimir... ppal.");
+
+	// Asignaciones iniciales
+	Disparo = P_Senial_E1->ReferenciaT0;
+
+	// Escribimos última muestra:
+	uEscribirTxt ("Senial cargada:");
+	uEscribirTxt ("\n\rENT_1 \tENT_2\n\r");
+
+	for (i=0; i<U_LARGO_CAPTURA; i++) {
+
+		Muestra = P_Senial_E1->Muestras_p[i];
+		MUESTRA_ENTRADA_1 = ( Muestra & MASCARA_DERECHA16   );
+		MUESTRA_ENTRADA_2 = ( Muestra & MASCARA_IZQUIERDA16 ) >> 16;
+
+		if ( (i==Disparo) && (i>0) ) uEscribirTxt ("---> Disparo <---\n\r");
+
+		uEscribirUint ( MUESTRA_ENTRADA_1 );	// Dato de ENTRADA 1
+		uEscribirTxt  ( "\t" );		// Tabulación
+		uEscribirUint ( MUESTRA_ENTRADA_2 );	// Dato de ENTRADA 2
+		//uEscribirTxt  ( "\t" );		// Tabulación
+		//uEscribirUint ( CantidadProcesadas12[i] );	// Dato de ENTRADA 2
+		uEscribirTxt  ( "\n\r" );
+	}
+
+	uEscribirTxtUint ( "Capturas promediadas \t= ", CapturasObjetivo() - Capturadora.CapturasRestantes );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Tiempo de captura \t= ", Capturadora.TiempoCaptura );
+	uEscribirTxt     ( " ms\n\r" );
+	uEscribirTxtUint ( "Nivel (12B) \t\t= ", Capturadora.NivelDisparo );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Escala Entrada 1\t= ", (uint32_t) (EntradaAdmin[0].Config.EscalaVertical*10) );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Escala Entrada 2\t= ", (uint32_t) (EntradaAdmin[1].Config.EscalaVertical*10) );
+	uEscribirTxt     ( "\n\r" );
+}
+*/
 
 /**
   * @brief System Clock Configuration
@@ -203,111 +236,6 @@ void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
 	uLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
 	uEscribirTxt ("Error con ADC...\n\r");
-}
-
-void _uHALadcLecturaCompletada ( adc_id_e ID )
-{
-	Num_Conversiones++;
-	uLedEncender ( UOSAL_PIN_LED_VERDE_INCORPORADO );
-}
-
-void PromediarConDisparo(void)
-{
-	bool bajo=true;
-	int inicio = 0;
-	int final  = MUESTRAS;
-
-	// Evalúo si la señal inicia por encima del nivel buscado:
-	// (aplico máscada de ADC1)
-	if ( ( ADC_CONVERTIDO[PREDESCARTE]&0xFFFF ) >= NIVEL) bajo = false;
-
-	for (int disparo=PREDESCARTE; disparo<MUESTRAS; disparo++) {
-
-		// Supondremos por ahora siempre flanco de subida
-		if ( bajo && ( (ADC_CONVERTIDO[disparo]&0xFFFF) >= NIVEL) ) {
-
-    		if ( disparo > PREMUESTRAS ) {
-    			// No puedo cargar todas las muestras anteriores
-    			inicio = disparo - PREMUESTRAS;
-    		}
-
-         if ( disparo < PREMUESTRAS ) {
-            	final = MUESTRAS + disparo - PREMUESTRAS;
-         }
-
-         inicio = (inicio > PREDESCARTE) ? inicio : PREDESCARTE;
-
-	    	// Hubo disparo!!! :-)
-	    	for (int i=inicio; i<final; i++) {
-	    		// Acá se supone que suma por separado ambos ADC. Muestras a promediar deben ser igual o menor a 16.
-	    		ADC_SUMA     [ PREMUESTRAS + i - disparo] = ADC_SUMA [ PREMUESTRAS + i - disparo] + ADC_CONVERTIDO[i];
-	    		ADC_CANTIDAD [ PREMUESTRAS + i - disparo] ++;
-	    	}
-	    	disparo = MUESTRAS;
-	    }
-
-	    // Esto es por si empezó alto
-	    if ( (ADC_CONVERTIDO[disparo]&0xFFFF) < (NIVEL-HISTERESIS) ) bajo = true;
-	}
-}
-
-void EscribirDatos(uint32_t Actual)
-{
-	uint16_t P_ADC1, P_ADC2;
-	uint16_t MAXIMO = 0;
-	uint16_t MINIMO = 4095;
-
-	// Escribimos última muestra:
-	uEscribirTxtUint ("Lectura # ", Actual);
-	uEscribirTxt         ("\n\rADC_1 \tADC_2\n\r");
-
-	for (int i=0; i<MUESTRAS; i++) {
-
-		P_ADC1 = ( ADC_CONVERTIDO [i] & 0x0000FFFF )      ;
-		P_ADC2 = ( ADC_CONVERTIDO [i] & 0xFFFF0000 ) >> 16;
-
-		uEscribirUint ( P_ADC1 );   // Dato de ADC1
-		uEscribirTxt 	  ( ";\t");     // Tabulación
-		uEscribirUint ( P_ADC2 );   // Dato ADC2
-		uEscribirTxt    ("\n\r");
-
-		MAXIMO = P_ADC1 > MAXIMO ? P_ADC1 : MAXIMO;
-		MINIMO = P_ADC1 < MINIMO ? P_ADC1 : MINIMO;
-
-	}
-	uEscribirTxtUint ("\n\rMaximo ultimo = ", MAXIMO);
-	uEscribirTxtUint ("\n\rMinimo ultimo = ", MINIMO);
-	uEscribirTxt 		   ("\n\r------------------------------------------------------------------\n\r");
-
-	// Escribimos promedio:
-	uEscribirTxt         ("Promedio");
-	uEscribirTxt         ("\n\rADC_1 \tADC_2 \tCantidad\n\r");
-
-	MAXIMO = 0;
-	MINIMO = 4095;
-
-	for (int i=0; i<MUESTRAS; i++) {
-
-		if (i==PREMUESTRAS) uEscribirTxt ("Disparo...\n\r");
-
-		P_ADC1 = (( ADC_SUMA [i] & 0x0000FFFF )      ) / ADC_CANTIDAD [i];
-		P_ADC2 = (( ADC_SUMA [i] & 0xFFFF0000 ) >> 16) / ADC_CANTIDAD [i];
-
-		uEscribirUint ( P_ADC1 );
-		uEscribirTxt 	  ( ";\t");
-		uEscribirUint ( P_ADC2 );
-		uEscribirTxt 	  ( ";\t");
-		uEscribirUint ( ADC_CANTIDAD [i] );
-		uEscribirTxt    ( "\n\r");
-
-		MAXIMO = P_ADC1 > MAXIMO ? P_ADC1 : MAXIMO;
-		MINIMO = P_ADC1 < MINIMO ? P_ADC1 : MINIMO;
-
-	}
-	uEscribirTxtUint ("\n\rMaximo ultimo = ", MAXIMO);
-	uEscribirTxtUint ("\n\rMinimo ultimo = ", MINIMO);
-	uEscribirTxt         (" \n\r------------------------------------------------------------\n\r");
-
 }
 
 /**

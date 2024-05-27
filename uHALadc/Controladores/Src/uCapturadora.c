@@ -21,7 +21,7 @@
 #define U_SOBREMUESTREO          	((uint32_t)( U_LARGO_CAPTURA ))
 #define U_LARGO_CAPTURA_INICIAL 	 	((uint32_t)( U_MUESTRAS_DESCARTADAS + U_LARGO_CAPTURA + U_SOBREMUESTREO ))
 #define U_ESCALA_HORIZONTAL_MINIMA	((double) U_LARGO_CAPTURA / 2.4e6)	// 2.4e6 es lo máximo que admite la placa
-#define U_TIEMPO_CAPTURA_MAXIMO		((uint32_t) 2000)                   // [ms] Pasado este tiempo, envío lo que tenga.
+#define U_TIEMPO_CAPTURA_MAXIMO		((uint32_t) 1000)                   // [ms] Pasado este tiempo, envío lo que tenga.
 																								// Además de este tiempo, se tarda en procesar y enviar.
 
 /****** Definiciones privadas de tipos de datos (public typedef) *********************************/
@@ -85,8 +85,7 @@ void 		ProcesarSenial (void);
 void 		ImprimirSenial32 (void);
 bool		ValidarOrigenDisparo ( entrada_id_e * );
 uint8_t	CapturasObjetivo ( void );
-bool     EsValorPrevioDisparo ( uint32_t );
-bool     EsValorParaDisparo ( uint32_t );
+escala_vertical_e EscalaVerticalId ( float ); // Devuelve el índice correspondiente al valor de escala vertical
 
 /****** Definición de funciones públicas ********************************************************/
 
@@ -202,10 +201,21 @@ double uCapturadoraLeerFrecuenciaMuestreo ( void )
 	return Capturadora.FrecuenciaMuestreo;
 }
 
+uint8_t	uCapturadoraLeerSincronizadas	( void )
+{
+	return (uint8_t) (CapturasObjetivo() - Capturadora.CapturasRestantes);
+}
+
+uint32_t	uCapturadoraLeerTiempoCaptura	( void )
+{
+	return Capturadora.TiempoCaptura;
+}
+
 bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * PCONFIG )
 {
 	// Variables locales
-	bool control = false;
+	bool 				control   = false;
+	adc_config_s	ConfigADC = {0};
 
 	// Verificación de parámetros y recursividad
 	if ( ENTRADAS_TODAS==ID ) {
@@ -215,8 +225,8 @@ bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * PCONFI
 	}
 	if ( U_ENTRADAS_CANTIDAD < ID ) return false;
 
-	// Configuramos...
-	EntradaAdmin[ID].Config.EscalaVertical  = uCapturadoraEscalaVertical(PCONFIG->EscalaVertical);
+	// Configuramos estructura
+	EntradaAdmin[ID].Config.EscalaVertical  = uCapturadoraLeerEscalaVertical(PCONFIG->EscalaVertical);
 	EntradaAdmin[ID].Config.NivelDisparo    = PCONFIG->NivelDisparo;
 	if ( EntradaAdmin[ID].Config.NivelDisparo > EntradaAdmin[ID].Config.EscalaVertical )
 		EntradaAdmin[ID].Config.NivelDisparo = EntradaAdmin[ID].Config.EscalaVertical;
@@ -225,6 +235,22 @@ bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * PCONFI
 	EntradaAdmin[ID].Config.FlancoDisparo   = PCONFIG->FlancoDisparo;
 	EntradaAdmin[ID].Config.Encendida       = PCONFIG->Encendida;
 
+	// Configuramos ADC
+	switch (	EscalaVerticalId (EntradaAdmin[ID].Config.EscalaVertical) )
+	{
+		case ESCALA_VERTICAL_1:
+			ConfigADC.Canal = U_ADC_CANAL_1;
+			break;
+		case ESCALA_VERTICAL_2:
+			ConfigADC.Canal = U_ADC_CANAL_2;
+			break;
+		default:
+			uHuboErrorTxt("configurando Entrada.");
+	}
+	ConfigADC.FrecuenciaMuestreo = Capturadora.FrecuenciaMuestreo;
+	if ( false == uHALadcConfigurar ( (adc_id_e)ID, &ConfigADC) ) uHuboErrorTxt("configurando ADC.");
+	Capturadora.FrecuenciaMuestreo = ConfigADC.FrecuenciaMuestreo;
+
 	// Copiamos configuración establecida y salimos:
 	control = uCapturadoraEntradaObtener( ID, PCONFIG);
 	return control;
@@ -232,23 +258,23 @@ bool uCapturadoraEntradaConfigurar 	( entrada_id_e ID, entrada_config_s * PCONFI
 
 bool uCapturadoraEntradaObtener ( entrada_id_e ID, entrada_config_s * PCONFIG)
 {
-	PCONFIG->EscalaVertical	= EntradaAdmin[ID].Config.EscalaVertical;
-	PCONFIG->NivelDisparo	= EntradaAdmin[ID].Config.NivelDisparo;
-	PCONFIG->FlancoDisparo	= EntradaAdmin[ID].Config.FlancoDisparo;
-	PCONFIG->Encendida		= EntradaAdmin[ID].Config.Encendida;
-	return true;
-}
-
-bool uCapturadoraSenialObtener ( entrada_id_e ID,  senial_s * PSENIAL)
-{
-	if ( NULL==PSENIAL ) {
-		PSENIAL = &SenialAdmin[ID];
+	if (ID < U_ENTRADAS_CANTIDAD) {
+		PCONFIG->EscalaVertical	= EntradaAdmin[ID].Config.EscalaVertical;
+		PCONFIG->NivelDisparo	= EntradaAdmin[ID].Config.NivelDisparo;
+		PCONFIG->FlancoDisparo	= EntradaAdmin[ID].Config.FlancoDisparo;
+		PCONFIG->Encendida		= EntradaAdmin[ID].Config.Encendida;
 		return true;
+	} else {
+		return false;
 	}
-	return false;
 }
 
-float  uCapturadoraEscalaVertical	( float VOLTIOS )
+senial_s * uCapturadoraSenialObtener ( entrada_id_e ID )
+{
+	return &SenialAdmin[ID];
+}
+
+float  uCapturadoraLeerEscalaVertical	( float VOLTIOS )
 {
 	escala_vertical_e i=ESCALA_VERTICAL_1;
 	float retorno = EscalasVerticales[i];
@@ -421,13 +447,13 @@ bool uCapturadoraActualizar ( void)
 }
 
 bool uCapturadoraSenialCargada ( void )
-// Indica si hay al menos una señal cargada.
+// Indica si hay una señal cargada.
 {
 	bool retorno = false;
 	uCapturadoraActualizar();
 	if ( CAPTURADORA_CAPTURA_COMPLETADA == Capturadora.Estado ) {
 		retorno = true;
-		ImprimirSenial32();
+		// ImprimirSenial32();
 		uLedApagar ( UOSAL_PIN_LED_AZUL_INCORPORADO );
 		Capturadora.Estado = CAPTURADORA_INACTIVA;
 	}
@@ -515,8 +541,11 @@ bool SumarSenial(void)
 	   if ( (MuestrasCapturadas12[Disparo]&Mascara)>>Desplaza <= LimiteInferior ) ActualEsAlto = false;
 
 		// Verificamos si hubo un cambio de estado acorde al flanco seleccionado
-		if ( ( FlancoSubida & !PrevioEsAlto &  ActualEsAlto ) ||
-			  ( FlancoBajada &  PrevioEsAlto & !ActualEsAlto )    ) {
+	   if ( PrevioEsAlto !=  ActualEsAlto                                     &&
+	   	  ((FlancoSubida && ActualEsAlto) || (FlancoBajada && PrevioEsAlto))  ) {
+
+		/*if ( ( FlancoSubida & !PrevioEsAlto &  ActualEsAlto ) ||
+			  ( FlancoBajada &  PrevioEsAlto & !ActualEsAlto )    ) { */
 
 			/* Iniciamos suma de captura -----------------------------------------------------------*/
 			// Muestra inicial que se debe sumar:
@@ -590,12 +619,16 @@ void ImprimirSenial32 (void)
 		//uEscribirUint ( CantidadProcesadas12[i] );	// Dato de ENTRADA 2
 		uEscribirTxt  ( "\n\r" );
 	}
-	uEscribirTxtUint ( "Muestras capturadas = ", CapturasObjetivo() - Capturadora.CapturasRestantes );
-	uEscribirTxt     ( ". \n\r" );
-	uEscribirTxtUint ( "Tiempo de captura = ", Capturadora.TiempoCaptura );
-	uEscribirTxt     ( "ms. \n\r" );
-	uEscribirTxtUint ( "Nivel (12B) = ", Capturadora.NivelDisparo );
-	uEscribirTxt     ( ". \n\r" );
+	uEscribirTxtUint ( "Capturas promediadas \t= ", CapturasObjetivo() - Capturadora.CapturasRestantes );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Tiempo de captura \t= ", Capturadora.TiempoCaptura );
+	uEscribirTxt     ( " ms\n\r" );
+	uEscribirTxtUint ( "Nivel (12B) \t\t= ", Capturadora.NivelDisparo );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Escala Entrada 1\t= ", (uint32_t) (EntradaAdmin[0].Config.EscalaVertical*10) );
+	uEscribirTxt     ( "\n\r" );
+	uEscribirTxtUint ( "Escala Entrada 2\t= ", (uint32_t) (EntradaAdmin[1].Config.EscalaVertical*10) );
+	uEscribirTxt     ( "\n\r" );
 }
 
 bool ValidarOrigenDisparo ( entrada_id_e * P_ORIGEN )
@@ -616,45 +649,19 @@ uint8_t CapturasObjetivo ( void )
 	return Retorno;
 }
 
-bool EsValorPrevioDisparo ( uint32_t VALOR )
+/* @brief	Devuelve el índice correspondiente al valor de escala vertical
+ * @param	Valor de escala en voltios
+ * @retval	Índice que identifica la escala
+ */
+escala_vertical_e EscalaVerticalId ( float VOLTIOS )
 {
-	if ( Capturadora.FlancoDisparo == SUBIDA ) {
-		if ( VALOR <= (Capturadora.NivelDisparo-Capturadora.Histeresis) ) {
-			return true;
-		} else {
-			return false;
-		}
+	escala_vertical_e i=ESCALA_VERTICAL_1;
+	float retorno = EscalasVerticales[i];
+	while ( (retorno<VOLTIOS) && (i<ESCALA_VERTICAL_MAXIMA) ) {
+		i++;
+		retorno = EscalasVerticales[i];
 	}
-	if ( Capturadora.FlancoDisparo == BAJADA ) {
-		if ( VALOR >= (Capturadora.NivelDisparo+Capturadora.Histeresis) ) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	uHuboErrorTxt ("en EsValorPrevioDisparo de uCapturadora.");
-	return false;
+	return i;
 }
-
-bool EsValorParaDisparo ( uint32_t VALOR )
-{
-	if ( Capturadora.FlancoDisparo == BAJADA ) {
-		if ( VALOR <= (Capturadora.NivelDisparo-Capturadora.Histeresis) ) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	if ( Capturadora.FlancoDisparo == SUBIDA ) {
-		if ( VALOR >= (Capturadora.NivelDisparo+Capturadora.Histeresis) ) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	uHuboErrorTxt ("en EsValorParaDisparo de uCapturadora.");
-	return false;
-}
-
 
 /****************************************************************** FIN DE ARCHIVO ***************/

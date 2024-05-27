@@ -38,6 +38,7 @@ void     uLedInvertir       	( uint16_t );
 void     uEscribirTxt         ( char * );
 void     uEscribirTxtUint		( char *, uint32_t );
 void     uEscribirUint      	( uint32_t );
+bool		uLeerChar 				( uint8_t *, uint32_t );
 void     uHuboError           ( void );
 void     uHuboErrorTxt        ( char * );
 
