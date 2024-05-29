@@ -19,7 +19,7 @@
 
 #define U_ENTRADAS_CANTIDAD       				2
 #define U_NUM_MAX_CAPTURAS_PROMEDIAR			16
-#define U_LARGO_CAPTURA								100	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
+#define U_LARGO_CAPTURA								1000	// Total de muestras a capturar (incluye PRE_DISPARO y POS_DISPARO)
 
 #define CAPTURA_UNICA								0b00000001
 #define CAPTURA_CONTINUA							0b00000010  // Sin habilitar por ahora

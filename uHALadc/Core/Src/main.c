@@ -16,6 +16,7 @@
 /* Private macro -------------------------------------------------------------*/
 
 #define FREC_TESTIGO 4000.0
+//#define uEscribirTUT (t1, ui, t2) ( uEscribirTxtUintTxt(t1,ui,t2) )
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -24,8 +25,11 @@ entrada_config_s     ENTRADA_CONFIG  = {0};
 senial_s * 				P_Senial_E1 = NULL;
 senial_s * 				P_Senial_E2 = NULL;
 uint8_t    				TareaNro = 0;
-uint8_t					Caracter[2] = {0};
 uint32_t 				Tiempo_us = 0;
+char						Caracter[2] = {0};
+char						Texto[50] = {0};
+char						Bis  [50] = {0};
+uint32_t					Leidos = 0;
 
 /* Variables importadas -------------------------------------------------------*/
 
@@ -135,57 +139,26 @@ int main(void)
 		  uCapturadoraIniciar ();
 	  }
 
-	  if (TareaNro > 2 && uLeerChar ( &Caracter[0], 1 )) {
-		  uEscribirTxt ( (char *) Caracter );
+	  if (TareaNro > 1 ) {
+		  //&& uLeerChar ( &Caracter[0], 500 )) {
+		  //uEscribirTxt ( (char *) Caracter );
+		  //uEscribirUint ( (uint32_t) Caracter[0]);
+		  //uEscribirTxt ( "\r\n" );
+		  Leidos = uLeerTxt ( Texto, 49, 200*1000 ); // Siempre dejamos el caracter último de Texto en '\0'
+		  if ( 0 < Leidos ) {
+			  if ( Leidos < 49 ) {
+				  uEscribirTxtUintTxt ( Texto, Leidos, "\r\n" );
+			  } else {
+				  // Leo otro mas...
+				  Bis[0] = '\0';
+				  Leidos = uLeerTxt ( Bis, 49, 50*1000 );
+				  uEscribirTxtUintTxt ( Texto, 49,     "\r\n" );
+				  uEscribirTxtUintTxt ( Bis,   Leidos, "\r\n" );
+			  }
+		  }
 	  }
-
   } // -----> fin de loop
 }	 // -----> fin de main
-
-/*
-void ImprimirSenial32_main (void)
-{
-	// Variables locales:
-	uint32_t i, Muestra, MUESTRA_ENTRADA_1, MUESTRA_ENTRADA_2, Disparo;
-
-	// Precondiciones
-	if ( NULL == P_Senial_E1 || NULL == P_Senial_E2 ) uHuboErrorTxt ("en Imprimir... ppal.");
-
-	// Asignaciones iniciales
-	Disparo = P_Senial_E1->ReferenciaT0;
-
-	// Escribimos última muestra:
-	uEscribirTxt ("Senial cargada:");
-	uEscribirTxt ("\n\rENT_1 \tENT_2\n\r");
-
-	for (i=0; i<U_LARGO_CAPTURA; i++) {
-
-		Muestra = P_Senial_E1->Muestras_p[i];
-		MUESTRA_ENTRADA_1 = ( Muestra & MASCARA_DERECHA16   );
-		MUESTRA_ENTRADA_2 = ( Muestra & MASCARA_IZQUIERDA16 ) >> 16;
-
-		if ( (i==Disparo) && (i>0) ) uEscribirTxt ("---> Disparo <---\n\r");
-
-		uEscribirUint ( MUESTRA_ENTRADA_1 );	// Dato de ENTRADA 1
-		uEscribirTxt  ( "\t" );		// Tabulación
-		uEscribirUint ( MUESTRA_ENTRADA_2 );	// Dato de ENTRADA 2
-		//uEscribirTxt  ( "\t" );		// Tabulación
-		//uEscribirUint ( CantidadProcesadas12[i] );	// Dato de ENTRADA 2
-		uEscribirTxt  ( "\n\r" );
-	}
-
-	uEscribirTxtUint ( "Capturas promediadas \t= ", CapturasObjetivo() - Capturadora.CapturasRestantes );
-	uEscribirTxt     ( "\n\r" );
-	uEscribirTxtUint ( "Tiempo de captura \t= ", Capturadora.TiempoCaptura );
-	uEscribirTxt     ( " ms\n\r" );
-	uEscribirTxtUint ( "Nivel (12B) \t\t= ", Capturadora.NivelDisparo );
-	uEscribirTxt     ( "\n\r" );
-	uEscribirTxtUint ( "Escala Entrada 1\t= ", (uint32_t) (EntradaAdmin[0].Config.EscalaVertical*10) );
-	uEscribirTxt     ( "\n\r" );
-	uEscribirTxtUint ( "Escala Entrada 2\t= ", (uint32_t) (EntradaAdmin[1].Config.EscalaVertical*10) );
-	uEscribirTxt     ( "\n\r" );
-}
-*/
 
 /**
   * @brief System Clock Configuration
@@ -232,6 +205,10 @@ void SystemClock_Config(void)
   }
 }
 
+/**
+  * @brief Retorno ante error en ADC
+  * @retval None
+  */
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
 	uLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );

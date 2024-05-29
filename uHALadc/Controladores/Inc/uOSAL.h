@@ -36,9 +36,11 @@ void     uLedEncender       	( uint16_t );
 void     uLedApagar         	( uint16_t );
 void     uLedInvertir       	( uint16_t );
 void     uEscribirTxt         ( char * );
-void     uEscribirTxtUint		( char *, uint32_t );
 void     uEscribirUint      	( uint32_t );
-bool		uLeerChar 				( uint8_t *, uint32_t );
+void     uEscribirTxtUint		( char *, uint32_t );
+void     uEscribirTxtUintTxt	( char *, uint32_t, char * );
+bool		uLeerChar 				( char *, uint32_t );
+uint32_t uLeerTxt 				( char *, uint32_t, uint32_t );
 void     uHuboError           ( void );
 void     uHuboErrorTxt        ( char * );
 

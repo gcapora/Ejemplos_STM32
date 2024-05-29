@@ -15,6 +15,7 @@
 
 /****** Definiciones privadas (macros) ***********************************************************/
 
+#define UOSAL_UART_TIEMPO_ESPERA_US		UOSAL_UART_TIEMPO_ESPERA*1000  // Mismo valor pero en us
 
 /****** Definiciones privadas de tipos (private typedef) *****************************************/
 
@@ -159,13 +160,9 @@ void     uEscribirTxt ( char * P_TEXTO)
  * @param	Puntero a texto y número entero positivo
  * @retval  Ninguno
  */
-void     uEscribirTxtUint ( char * P_TEXTO, uint32_t ENTEROP)
+void     uEscribirUint ( uint32_t ENTEROP)
 {
-    // Primero texto:
-	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO);
-
-	// Luego número:
-    uint8_t Cadena[16] = {0};
+    uint8_t Cadena[16] = {0};  // Suficiente para un uint32_t
     sprintf( (char *) Cadena, "%lu", ENTEROP);
     UART_ENVIAR_CADENA (Cadena);
 }
@@ -175,32 +172,92 @@ void     uEscribirTxtUint ( char * P_TEXTO, uint32_t ENTEROP)
  * @param	Puntero a texto y número entero positivo
  * @retval  Ninguno
  */
-void     uEscribirUint ( uint32_t ENTEROP)
+void     uEscribirTxtUint ( char * P_TEXTO, uint32_t ENTEROP)
 {
-    uint8_t Cadena[16] = {0};  // Suficiente para un uint32_t
-    sprintf( (char *) Cadena, "%lu", ENTEROP);
-    UART_ENVIAR_CADENA (Cadena);
+	// Primero texto:
+	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO);
+
+	// Luego número:
+   uint8_t Cadena[16] = {0};
+   sprintf( (char *) Cadena, "%lu", ENTEROP);
+   UART_ENVIAR_CADENA (Cadena);
+}
+
+/*-------------------------------------------------------------------------------------------------
+ * @brief	Escribe texto y un número por UART
+ * @param	Puntero a texto y número entero positivo
+ * @retval  Ninguno
+ */
+void uEscribirTxtUintTxt ( char * P_TEXTO, uint32_t ENTEROP, char * P_TEXTO2)
+{
+   // Primero texto:
+	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO);
+
+	// Luego número:
+   uint8_t Cadena[16] = {0};
+   sprintf( (char *) Cadena, "%lu", ENTEROP);
+   UART_ENVIAR_CADENA (Cadena);
+
+   // Finalmente texto2:
+  	UART_ENVIAR_CADENA ( (uint8_t *) P_TEXTO2);
 }
 
 /*******************************************************************************
-  * @brief  Recibe por UART una cantidad definida de caracteres
-  * @param  Puntero donde guardar char
-  * @param  Tiempo de espera
+  * @brief  Lee por UART un caracter
+  * @param  Puntero donde guardar un char
+  * @param  Tiempo de espera [us]
   * @retval true si leyó algo
   */
-bool uLeerChar (uint8_t * caracter, uint32_t tiempo) {
+bool uLeerChar (char * caracter, uint32_t Espera)
+{
 	// Variables locales;
 	HAL_StatusTypeDef Resultado;
+	uint32_t				TiempoInicio;
 
 	// Precondiciones
 	if (caracter == NULL) uHuboErrorTxt("en uLeerChar de uOSAL.");
-	tiempo = (tiempo>1000) ? 1000 : tiempo;
+	Espera = (Espera>UOSAL_UART_TIEMPO_ESPERA_US) ? UOSAL_UART_TIEMPO_ESPERA_US : Espera;
 
 	// Recibo...
-	Resultado = HAL_UART_Receive(&uart_e, (uint8_t *) caracter, 1, tiempo);
+	TiempoInicio = uMicrosegundos();
+	do {
+		Resultado = HAL_UART_Receive(&uart_e, (uint8_t *) caracter, 1, 0);
+	} while ( (uMicrosegundos()-TiempoInicio < Espera) && (Resultado != HAL_OK) );
 	if (Resultado == HAL_OK) return true;
 	return false;
 }
+
+/*******************************************************************************
+  * @brief  Lee por UART una cantidad máxima de caracteres
+  * @param  Puntero donde guardar vector de char
+  * @param  Cantidad máxima de char
+  * @param  Tiempo de espera [us]
+  * @retval true si leyó algo
+  */
+uint32_t uLeerTxt ( char * TEXTO, uint32_t CANTIDAD, uint32_t ESPERA )
+{
+	// Variables locales
+	uint32_t TiempoInicio = 0;
+	uint32_t Indice = 0;
+
+	// Precondiciones
+	if (TEXTO == NULL) uHuboErrorTxt("en uLeerTxt de uOSAL.");
+	if (0==CANTIDAD)   return 0;
+	CANTIDAD = (CANTIDAD > UOSAL_UART_LARGO_MAXIMO    ) ? UOSAL_UART_LARGO_MAXIMO     : CANTIDAD;
+	ESPERA   = (ESPERA   > UOSAL_UART_TIEMPO_ESPERA_US) ? UOSAL_UART_TIEMPO_ESPERA_US : ESPERA;
+
+	// Lectura
+	TiempoInicio = uMicrosegundos();
+	do {
+		if ( uLeerChar ( &TEXTO[Indice], 0 ) ) {
+			// Leímos un caracter!!!
+			Indice++;
+		}
+	} while ( (uMicrosegundos()-TiempoInicio < ESPERA) && (Indice < CANTIDAD) );
+	if (Indice<CANTIDAD) TEXTO[Indice]='\0';  // Esto es para cumplir con formato de cadena
+	return Indice;
+}
+
 
 /****** Definición de funciones privadas *********************************************************/
 
@@ -260,7 +317,7 @@ bool UART_INICIALIZAR (void) {
   /*##########################################################################*/
 
   uart_e.Instance          = USARTx;
-  uart_e.Init.BaudRate     = 115200;
+  uart_e.Init.BaudRate     = UOSAL_UART_BAUDIOS;
   uart_e.Init.WordLength   = UART_WORDLENGTH_8B;
   uart_e.Init.StopBits     = UART_STOPBITS_1;
   uart_e.Init.Parity       = UART_PARITY_NONE;

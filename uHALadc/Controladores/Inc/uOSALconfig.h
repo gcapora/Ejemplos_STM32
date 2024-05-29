@@ -29,6 +29,10 @@
 #define UOSAL_PIN_LEDS_INCORPORADOS_TODOS ( UOSAL_PIN_LED_ROJO_INCORPORADO | UOSAL_PIN_LED_VERDE_INCORPORADO | UOSAL_PIN_LED_AZUL_INCORPORADO )
 
 // Puerto UART ------------------------------------------------------------------------------------
+/* Constantes de usuario para comunicación */
+#define UOSAL_UART_BAUDIOS                460800  // Predeterminado es 115200
+#define UOSAL_UART_LARGO_MAXIMO           256
+#define UOSAL_UART_TIEMPO_ESPERA          100    // [ms]
 /* Definition for USARTx clock resources */
 #define USARTx                            USART3
 #define USARTx_CLK_ENABLE()               __HAL_RCC_USART3_CLK_ENABLE()
@@ -43,9 +47,6 @@
 #define USARTx_RX_PIN                     GPIO_PIN_9
 #define USARTx_RX_GPIO_PORT               GPIOD
 #define USARTx_RX_AF                      GPIO_AF7_USART3
-/* Constantes de usuario para comunicación */
-#define UOSAL_UART_LARGO_MAXIMO           256
-#define UOSAL_UART_TIEMPO_ESPERA          100  // milisegundos?
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
