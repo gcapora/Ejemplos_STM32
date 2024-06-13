@@ -39,9 +39,9 @@ double Cuadrada     (double Grados, double CicloDeTrabajo);
 bool ConfigSenialVerificada (senial_s * Senial)
 {
 	// Errores graves
-	if (Senial->Largo > U_MAX_N_MUESTRAS) uManejaError();
-	if (Senial->Largo < 2) uManejaError();
-	if (Senial->Largo > Senial->LargoMaximo) uManejaError();
+	if (Senial->Largo > U_MAX_N_MUESTRAS) uoHuboError();
+	if (Senial->Largo < 2) uoHuboError();
+	if (Senial->Largo > Senial->LargoMaximo) uoHuboError();
 
 	// Correcciones de ciclo y márgenes
 	if (Senial->Simetria > 1)        Senial->Simetria = 1;
@@ -71,30 +71,38 @@ double AcotarGrados (double Grados)
 
 /**------------------------------------------------------------------------------------------------
 * @brief  Devuelve un valor entre -1 y 1 triangular
-* @param  Grados origen
+* @param  Grados (o fase) de la señal triangular
+* @param  Simetría de la señal: entre 0 y 1 (0.5 == simétrica)
 * @retval Valor entre -1 y 1
 */
 double Triangular (double Grados, double Simetria)
 {
+	// Variables locales
 	double Salida = 0;
-	double CuartoP = 180.0 * Simetria;
-	double MedioN  = 360.0 - CuartoP;
-	//double PendienteP = (double) 1/45 * Simetria;
-	//double PendienteN = (double) 1/45 * (1-Simetria);
-	//uEscribirTextoEnteroP ( "[dato] grados ", (uint32_t) Grados*1000 );
+	double CuartoP, MedioN;
 
+	// Precondiciones y correcciones
 	if ( Grados < 0 || Grados >= 360 ) Grados = AcotarGrados(Grados);
+	if ( Simetria < 0 ) Simetria = 0;
+	if ( Simetria > 1 ) Simetria = 1;
+	CuartoP = 180.0 * Simetria;
+	MedioN  = 360.0 - CuartoP;
+	
+	// Primer cuarto de onda
 	if ( Grados < CuartoP )       {
-		// Primer cuarto de onda
 		Salida =  0.0 + Grados / Simetria / 180;
+	
+	// Segundo y tercer cuarto
 	} else if ( Grados < MedioN ) {
-		// Segundo y tercer cuarto
 		Salida =  1.0 - (Grados - CuartoP) / (1-Simetria) / 180;
+
+	// Cuarto cuarto
 	} else if ( Grados < 360 )    {
-		// Cuarto cuarto
 		Salida = -1.0 + (Grados - MedioN) / Simetria / 180;
+
+	// Fin
 	} else {
-		uManejaError();
+		uoHuboError();
 	}
 	return Salida;
 }
@@ -143,7 +151,7 @@ void uGenerarSenial     ( senial_s * Senial )
 	            break;
 	        default:
 	            // Hubo un error
-	        	uManejaError();
+	        	uoHuboError();
 	    }
 	return;
 }
@@ -156,15 +164,14 @@ void uGenerarSenial     ( senial_s * Senial )
 void uGenerarTriangular ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-    if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
+    if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
     // Variables locales
    	uint32_t i = 0;
    	double ValorMedio = ((double) ( Senial->Maximo + Senial->Minimo )) /2;
    	double Amplitud   = ((double) ( Senial->Maximo - Senial->Minimo )) /2;
    	double Omega      =  360.0 * Senial->Multiplicador / Senial->Largo;
-   	// uEscribirTextoEnteroP ( "[i] Largo implementado ", Senial->Largo );
-
+   	
    	// Cargo senial triangular
     for ( i = 0; i < Senial->Largo; i++)
     {
@@ -187,7 +194,7 @@ void uGenerarTriangular ( senial_s * Senial )
 void uGenerarSenoidal ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-    if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
+    if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
 	// Variables locales
 	uint32_t i = 0;
@@ -195,7 +202,6 @@ void uGenerarSenoidal ( senial_s * Senial )
 	double Amplitud   = ((double) ( Senial->Maximo - Senial->Minimo )) /2;
 	double FaseRadian = Senial->Fase * M_PI / 180;
 	double Omega      = 2 * M_PI * Senial->Multiplicador / Senial->Largo;
-	// uEscribirTextoEnteroP ( "[i] Largo implementado ", Senial->Largo );
 
 	// Cargo senial seno
 	for ( i = 0; i < Senial->Largo; i++)
@@ -219,7 +225,7 @@ void uGenerarSenoidal ( senial_s * Senial )
 void uGenerarCuadrada ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-	if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
+	if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
     // Variables locales
 	uint32_t i = 0;
@@ -262,7 +268,7 @@ void uModificarNiveles ( senial_s * Senial, double Ganancia, uint32_t Continua)
 void uDefasar ( senial_s * Senial, double Defasaje)
 {
     // Verificamos precondiciones y hacemos correcciones
-	if ( false == ConfigSenialVerificada (Senial) ) uManejaError();
+	if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
     Defasaje = AcotarGrados (Defasaje);
     if ( Defasaje == 0) return; // Nada que hacer!!!
 
