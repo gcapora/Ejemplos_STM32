@@ -60,25 +60,24 @@ typedef enum {
 
 // Estructura para configurar y cargar una señal deseada ------------------------------------------
 typedef struct {
-	uint32_t *  Muestras_p;        // Puntero a las muestras de la señal.
-	// Debe modificarse por void * de modo de que
-	// pueda ser utilizado como vector uint16_t o uint32_t <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-	// Otra forma podría ser agregar otro puntero uint16_t
-
-	uint32_t    LargoMaximo;       // Cantidad máxima de muestras que tiene el vector apuntado.
-	uint32_t    Largo;             // La cantidad de muestras utilizadas de ese vector.
-	uint32_t    Inicio;            // Muestra que representa el tiempo 0.
-	                               // Puede haber señal antes de ese tiempo.
-	                               // Dato utilizado por la capturadora.
-    uint8_t     Multiplicador;     // Cantidad de ciclos que carga en las Largo muestras
+	uint32_t *		Muestras_p;		// Puntero a las muestras de la señal.
+	// Se propuso modificar por void * para que pueda ser utilizado como vector uint16_t o uint32_t.
+	// Si dejamos como uint32_t *, se puede modificar el contenido de cada palabra de uint32_t 
+	// según el campo Alineacion. 
+	alineacion_e	Alineacion;
+	uint32_t    	LargoMaximo;	// Cantidad máxima de muestras uint32_t que tiene el vector apuntado.
+	uint32_t    	Largo;         	// La cantidad de muestras utilizadas de ese vector. 1 + última muestra válida.
+	uint32_t    	Inicio;        	// Primera muestra válida.
+	uint32_t		Tiempo0;		// Muestra equivalente a tiempo=0 (puede haber señal antes de ese tiempo).
+	double			FrecuenciaMuestreo;
 
 	senial_tipo Tipo;
 	uint32_t    Maximo;            // en cuentas
     uint32_t    Minimo;            // en cuentas
+	uint8_t     Multiplicador;     // Cantidad de ciclos que carga en las Largo muestras
 	float       Fase;              // en grados, entre 0º y 360º
 	float       Simetria;          // Número entre 0 y 1. No aplica en senoidal.
-	                               // En cuadrada equivale a ciclo de trabajo.
-
+	
 	operacion_e UltimaAccion;
 } senial_s;
 
