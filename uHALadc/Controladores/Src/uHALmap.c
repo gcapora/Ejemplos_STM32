@@ -85,18 +85,18 @@ bool uHALmapInicializar ( map_id_e ID )
    	Tempo_admin[ID].Init.Period = Periodo0-1;             // Valor inicial que pone período
    	Tempo_admin[ID].Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
    	Tempo_admin[ID].Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-      if (HAL_TIM_Base_Init(&Tempo_admin[ID]) != HAL_OK) uHuboError();
+      if (HAL_TIM_Base_Init(&Tempo_admin[ID]) != HAL_OK) uoHuboError();
 
       sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-      if (HAL_TIM_ConfigClockSource( &Tempo_admin[ID], &sClockSourceConfig) != HAL_OK) uHuboError();
+      if (HAL_TIM_ConfigClockSource( &Tempo_admin[ID], &sClockSourceConfig) != HAL_OK) uoHuboError();
 
-      if (HAL_TIM_PWM_Init( &Tempo_admin[ID]) != HAL_OK) uHuboError();
+      if (HAL_TIM_PWM_Init( &Tempo_admin[ID]) != HAL_OK) uoHuboError();
 
       sConfigOC.OCMode = TIM_OCMODE_PWM1;
       sConfigOC.Pulse = CicloActivo0;                        // Valor inicial para CdT
       sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
       sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-      if (HAL_TIM_PWM_ConfigChannel( &Tempo_admin[ID], &sConfigOC, TIM_CHANNEL_1) != HAL_OK) uHuboError();
+      if (HAL_TIM_PWM_ConfigChannel( &Tempo_admin[ID], &sConfigOC, TIM_CHANNEL_1) != HAL_OK) uoHuboError();
 
       HAL_MSP_INICIALIZAR_PIN ( &Tempo_admin[ID] );
 

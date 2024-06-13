@@ -203,12 +203,12 @@ bool uHALadcConfigurar ( adc_id_e ID, adc_config_s * CONFIG )
 				canal = UHAL_ADC1_CANAL_2;
 				break;
 			default:
-				uHuboErrorTxt("Canal invalido en Configurar ADC.");
+				uoHuboErrorTxt("Canal invalido en Configurar ADC.");
 		}
 		sConfig.Channel = canal;
 		sConfig.Rank = 1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-		if (HAL_ADC_ConfigChannel(&admin_adc1, &sConfig) != HAL_OK) uHuboErrorTxt("en configuracion de canal de ADC.");
+		if (HAL_ADC_ConfigChannel(&admin_adc1, &sConfig) != HAL_OK) uoHuboErrorTxt("en configuracion de canal de ADC.");
 		admin_adc[ID].Canal = CONFIG->Canal;
 
 	/*** ¿ADC2 seleccionado? ***----------------------------------------------*/
@@ -226,12 +226,12 @@ bool uHALadcConfigurar ( adc_id_e ID, adc_config_s * CONFIG )
 					canal = UHAL_ADC2_CANAL_2;
 					break;
 				default:
-					uHuboError();
+					uoHuboError();
 			}
 			sConfig.Channel = canal;
 			sConfig.Rank = 1;
 			sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-			if (HAL_ADC_ConfigChannel(&admin_adc2, &sConfig) != HAL_OK) uHuboError();
+			if (HAL_ADC_ConfigChannel(&admin_adc2, &sConfig) != HAL_OK) uoHuboError();
 			admin_adc[ID].Canal = CONFIG->Canal;
 		}
 	}
@@ -376,7 +376,7 @@ PC5   ------> ADC12_IN15:  No incuido en ST Zio
     admin_dma_adc1.Init.Mode      = DMA_CIRCULAR;
     admin_dma_adc1.Init.Priority  = DMA_PRIORITY_VERY_HIGH;
     admin_dma_adc1.Init.FIFOMode  = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&admin_dma_adc1) != HAL_OK) uHuboError();
+    if (HAL_DMA_Init(&admin_dma_adc1) != HAL_OK) uoHuboError();
     __HAL_LINKDMA(adcHandle,DMA_Handle,admin_dma_adc1);
 
     /* ADC1 interrupt Init */
@@ -402,7 +402,7 @@ PC5   ------> ADC12_IN15:  No incuido en ST Zio
     admin_dma_adc2.Init.Mode      = DMA_CIRCULAR;
     admin_dma_adc2.Init.Priority  = DMA_PRIORITY_HIGH;
     admin_dma_adc2.Init.FIFOMode  = DMA_FIFOMODE_DISABLE;
-    if (HAL_DMA_Init(&admin_dma_adc2) != HAL_OK) uHuboError();
+    if (HAL_DMA_Init(&admin_dma_adc2) != HAL_OK) uoHuboError();
     __HAL_LINKDMA(adcHandle,DMA_Handle,admin_dma_adc2);
 
     /* ADC2 interrupt Init */

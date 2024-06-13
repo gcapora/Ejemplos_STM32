@@ -22,27 +22,34 @@
 
 /****** Definiciones públicas de tipos de datos (public typedef) *********************************/
 
-typedef bool bool_t;   // Esto es una finura... :-)
+typedef bool bool_t;   // Esto es una finura :-)
 
 /****** Declaraciones de datos externos **********************************************************/
 
 
 /****** Declaración de funciones públicas ********************************************************/
 
-bool     uOSALinicializar     ( void );
-uint32_t uMilisegundos      	( void );
-uint32_t uMicrosegundos   		( void );
-void     uLedEncender       	( uint16_t );
-void     uLedApagar         	( uint16_t );
-void     uLedInvertir       	( uint16_t );
-void     uEscribirTxt         ( char * );
-void     uEscribirUint      	( uint32_t );
-void     uEscribirTxtUint		( char *, uint32_t );
-void     uEscribirTxtUintTxt	( char *, uint32_t, char * );
-bool		uLeerChar 				( char *, uint32_t );
-uint32_t uLeerTxt 				( char *, uint32_t, uint32_t );
-void     uHuboError           ( void );
-void     uHuboErrorTxt        ( char * );
+bool     uoInicializar     	( void );
+
+uint32_t uoMilisegundos      	( void );
+uint32_t uoMicrosegundos   	( void );
+void		uoEsperarMilis			( uint32_t );
+void		uoEsperarMicros		( uint32_t );
+
+void     uoLedEncender       	( uint16_t );
+void     uoLedApagar         	( uint16_t );
+void     uoLedInvertir       	( uint16_t );
+
+void     uoEscribirTxt        ( char * );
+void     uoEscribirUint      	( uint32_t );
+void     uoEscribirTxtUint		( char *, uint32_t );
+void     uoEscribirTxtTxt     ( const char *, const char * );
+void     uoEscribirTxtUintTxt	( char *, uint32_t, char * );
+bool		uoLeerChar 				( char *, uint32_t );
+uint32_t uoLeerTxt 				( char *, uint32_t, uint32_t );
+
+void     uoHuboError          ( void );
+void     uoHuboErrorTxt       ( char * );
 
 /*************************************************************************************************/
 #endif /* ISPEL_UOSAL_H_ */

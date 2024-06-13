@@ -39,9 +39,9 @@ double Cuadrada     (double Grados, double CicloDeTrabajo);
 bool ConfigSenialVerificada (senial_s * Senial)
 {
 	// Errores graves
-	if (Senial->Largo > U_MAX_N_MUESTRAS) uHuboErrorTxt("verificando senial en uSeniales.");
-	if (Senial->Largo < 2) uHuboErrorTxt("verificando senial en uSeniales.");
-	if (Senial->Largo > Senial->LargoMaximo) uHuboErrorTxt("verificando senial en uSeniales.");
+	if (Senial->Largo > U_MAX_N_MUESTRAS) uoHuboErrorTxt("verificando senial en uSeniales.");
+	if (Senial->Largo < 2) uoHuboErrorTxt("verificando senial en uSeniales.");
+	if (Senial->Largo > Senial->LargoMaximo) uoHuboErrorTxt("verificando senial en uSeniales.");
 
 	// Correcciones de ciclo y márgenes
 	if (Senial->Simetria > 1)        Senial->Simetria = 1;
@@ -94,7 +94,7 @@ double Triangular (double Grados, double Simetria)
 		// Cuarto cuarto
 		Salida = -1.0 + (Grados - MedioN) / Simetria / 180;
 	} else {
-		uHuboError();
+		uoHuboError();
 	}
 	return Salida;
 }
@@ -143,7 +143,7 @@ void uGenerarSenial     ( senial_s * Senial )
 	            break;
 	        default:
 	            // Hubo un error
-	        	uHuboError();
+	        	uoHuboError();
 	    }
 	return;
 }
@@ -156,7 +156,7 @@ void uGenerarSenial     ( senial_s * Senial )
 void uGenerarTriangular ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-    if ( false == ConfigSenialVerificada (Senial) ) uHuboError();
+    if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
     // Variables locales
    	uint32_t i = 0;
@@ -187,7 +187,7 @@ void uGenerarTriangular ( senial_s * Senial )
 void uGenerarSenoidal ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-    if ( false == ConfigSenialVerificada (Senial) ) uHuboError();
+    if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
 	// Variables locales
 	uint32_t i = 0;
@@ -219,7 +219,7 @@ void uGenerarSenoidal ( senial_s * Senial )
 void uGenerarCuadrada ( senial_s * Senial )
 {
     // Verificamos precondiciones y hacemos correcciones
-	if ( false == ConfigSenialVerificada (Senial) ) uHuboError();
+	if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
 
     // Variables locales
 	uint32_t i = 0;
@@ -262,7 +262,7 @@ void uModificarNiveles ( senial_s * Senial, double Ganancia, uint32_t Continua)
 void uDefasar ( senial_s * Senial, double Defasaje)
 {
     // Verificamos precondiciones y hacemos correcciones
-	if ( false == ConfigSenialVerificada (Senial) ) uHuboError();
+	if ( false == ConfigSenialVerificada (Senial) ) uoHuboError();
     Defasaje = AcotarGrados (Defasaje);
     if ( Defasaje == 0) return; // Nada que hacer!!!
 

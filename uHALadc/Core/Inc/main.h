@@ -43,7 +43,7 @@ extern "C" {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-void ImprimirSenial32_main (void);
+void CaptuRTOS_ImprimirSenial32 (void);
 
 /* Private defines -----------------------------------------------------------*/
 

@@ -56,19 +56,19 @@ int main(void)
 
   /*---------------------------------------------------------------------------------------------*/
 
-  uEscribirTxt ("\n\r\n\r");
-  uEscribirTxt ("============================================================\n\r");
-  uEscribirTxt ("ADC dual con DMA (mayo 2024)\n\r");
-  uEscribirTxt ("============================================================\n\r");
+  uoEscribirTxt ("\n\r\n\r");
+  uoEscribirTxt ("============================================================\n\r");
+  uoEscribirTxt ("ADC dual con DMA (mayo 2024)\n\r");
+  uoEscribirTxt ("============================================================\n\r");
 
   // Señal cuadrada testigo -----------------------------------------------------------------------
 
-  uEscribirTxtUint	( "Frecuencia de senial cuadrada\t= ",
+  uoEscribirTxtUint	( "Frecuencia de senial cuadrada\t= ",
 		  	  	  	  	  	  (uint32_t) round( uHALmapConfigurarFrecuencia ( UHAL_MAP_PE5, FREC_TESTIGO ) ) );
-  uEscribirTxt			( " Hz. \n\r");
+  uoEscribirTxt			( " Hz. \n\r");
   uHALmapEncender    ( UHAL_MAP_PE5 );
-  Tiempo_us = uMicrosegundos();
-  do {} while (uMicrosegundos() - Tiempo_us < 5e5 );
+  Tiempo_us = uoMicrosegundos();
+  do {} while (uoMicrosegundos() - Tiempo_us < 5e5 );
   // Este retardo sirve para que la señal cuadrada inicie.
 
   // Capturadora ----------------------------------------------------------------------------------
@@ -94,9 +94,9 @@ int main(void)
 
   // Iniciamos captura 1 --------------------------------------------------------------------------
 
-  uEscribirTxt ("============================================================\n\r");
+  uoEscribirTxt ("============================================================\n\r");
   TareaNro = 1;
-  uEscribirTxt ( "Iniciamos captura #1...\n\r" );
+  uoEscribirTxt ( "Iniciamos captura #1...\n\r" );
   uCapturadoraEntradaEncender ( ENTRADA_1 );
   uCapturadoraEntradaEncender ( ENTRADA_2 );
   uCapturadoraIniciar ();
@@ -107,16 +107,16 @@ int main(void)
 
 	  // Verificamos si hay una nueva señal cargada...
 	  if ( uCapturadoraSenialCargada() ){
-		  ImprimirSenial32_main();
-		  uEscribirTxt ("============================================================\n\r");
-		  Tiempo_us = uMicrosegundos();
+		  CaptuRTOS_ImprimirSenial32();
+		  uoEscribirTxt ("============================================================\n\r");
+		  Tiempo_us = uoMicrosegundos();
 		  TareaNro++;
 	  }
 
 	  // Pedimos una nueva captura luego de un tiempo...
-	  if (uMicrosegundos () - Tiempo_us > 2e6 && 2==TareaNro)  {
-		  Tiempo_us = uMicrosegundos();
-		  uEscribirTxt("Iniciamos captura #2.\n\r");
+	  if (uoMicrosegundos () - Tiempo_us > 2e6 && 2==TareaNro)  {
+		  Tiempo_us = uoMicrosegundos();
+		  uoEscribirTxt("Iniciamos captura #2.\n\r");
 
 		  uCapturadoraObtener ( &CAPTU_CONFIG );
 		  //CAPTU_CONFIG.EscalaHorizontal = 1.0/100;
@@ -144,16 +144,16 @@ int main(void)
 		  //uEscribirTxt ( (char *) Caracter );
 		  //uEscribirUint ( (uint32_t) Caracter[0]);
 		  //uEscribirTxt ( "\r\n" );
-		  Leidos = uLeerTxt ( Texto, 49, 200*1000 ); // Siempre dejamos el caracter último de Texto en '\0'
+		  Leidos = uoLeerTxt ( Texto, 49, 200*1000 ); // Siempre dejamos el caracter último de Texto en '\0'
 		  if ( 0 < Leidos ) {
 			  if ( Leidos < 49 ) {
-				  uEscribirTxtUintTxt ( Texto, Leidos, "\r\n" );
+				  uoEscribirTxtUintTxt ( Texto, Leidos, "\r\n" );
 			  } else {
 				  // Leo otro mas...
 				  Bis[0] = '\0';
-				  Leidos = uLeerTxt ( Bis, 49, 50*1000 );
-				  uEscribirTxtUintTxt ( Texto, 49,     "\r\n" );
-				  uEscribirTxtUintTxt ( Bis,   Leidos, "\r\n" );
+				  Leidos = uoLeerTxt ( Bis, 49, 50*1000 );
+				  uoEscribirTxtUintTxt ( Texto, 49,     "\r\n" );
+				  uoEscribirTxtUintTxt ( Bis,   Leidos, "\r\n" );
 			  }
 		  }
 	  }
@@ -211,8 +211,8 @@ void SystemClock_Config(void)
   */
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
-	uLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
-	uEscribirTxt ("Error con ADC...\n\r");
+	uoLedEncender ( UOSAL_PIN_LED_ROJO_INCORPORADO );
+	uoEscribirTxt ("Error con ADC...\n\r");
 }
 
 /**

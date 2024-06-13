@@ -38,7 +38,7 @@ bool uHALinicializar ( void )
   bool control = true;
 
   // Empezamos por inicializar uOSAL:
-  if ( false == uOSALinicializar () ) control = false;
+  if ( false == uoInicializar () ) control = false;
 
   // Acá estarán todos los módulos que necesiten inicialización general.
   //if ( uHALadcInicializar () != true ) control = false;

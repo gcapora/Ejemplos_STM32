@@ -1,5 +1,5 @@
 /**************************************************************************************************
- * Archivo: uHALconfig.h
+ * Archivo: uHAL.h
  * Breve:	Configuración de aplicación específica para los módulos uHAL
  * Fecha:
  * Autor:	Guillermo F. Caporaletti
