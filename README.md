@@ -1,6 +1,6 @@
 # Ejemplos para la placa Nucleo-144 de STM32
 
-## FreeRTOS
+## FreeRTOS 1 y 2
 Corresponden a ejemplos vistos en CESE-FIUBA.
 
 ## Generador de señal
